@@ -249,7 +249,7 @@ export const MODELS: Record<ModelId, ModelDef> = {
     keyField: "openrouter",
     keyLabel: "OpenRouter key",
     extraHeaders: {
-      "HTTP-Referer": "https://swarm.local",
+      "HTTP-Referer": "https://swarm.echo-op.com",
       "X-Title": "Swarm",
     },
     envVars: ["OPENROUTER_API_KEY"],

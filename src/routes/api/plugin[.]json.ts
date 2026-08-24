@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/plugin.json")({
             type: "openapi",
             url: `${origin}/api/plugin/swarm`,
           },
-          contact_email: "ops@localhost",
+          contact_email: "ops@echo-op.com",
           endpoints: {
             run: {
               method: "POST",
