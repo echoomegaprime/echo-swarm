@@ -1,3 +1,4 @@
+node_modules
 node_modules/
 dist/
 .output/
@@ -15,6 +16,8 @@ screenshots/
 swarm-out/
 *.log
 .node_modules.lock
-public/__grok/
+# Keep Grok icon + install CSS in git; ignore generated PWA chrome if any
+public/__grok/install/assets/
 AGENTS.md
 AGENTS.project.md
+_grok_build_prompt.txt

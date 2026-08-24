@@ -1,0 +1,15 @@
+{
+  "name": "echo-swarm",
+  "title": "Echo Swarm",
+  "version": "1.0.0",
+  "description": "Multi-LLM council. Brief Grok, GPT, Claude, Gemini, DeepSeek, FORGE, TEMPER together.",
+  "icon": "/__grok/icon-180.png",
+  "mcp": {
+    "type": "http",
+    "url": "https://swarm-app.echo-op.com/api/plugin/mcp",
+    "headers": {
+      "x-echo-agent": "grok"
+    }
+  },
+  "instructions": "Call swarm_ping then swarm_brief. Pass lab keys via x-*-key headers when available."
+}

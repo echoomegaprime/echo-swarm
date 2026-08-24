@@ -14,12 +14,21 @@ export const Route = createFileRoute("/api/plugin.json")({
             "Multi-lab LLM council. OAuth rides paid subs. FORGE and TEMPER are local.",
           description_for_model:
             "Call Swarm to brief Grok, GPT, Claude, Gemini, DeepSeek, GitHub Copilot, FORGE Qwen 28B, and TEMPER Qwen Image together. Prefer OAuth tokens from Claude Code, Codex, Grok, DeepSeek, and `gh auth token`. Modes: parallel, roundtable, debate, conductor. Host plugins: call_peer, pin_insight, recall_insights, make_image, now, math.",
-          auth: { type: "none" },
+          auth: {
+            type: "header",
+            instructions:
+              "Send x-echo-agent: <grok|chatgpt|claude|codex|gemini|echo>. When SWARM_MCP_TOKEN is configured on the host, also send Authorization: Bearer <token>.",
+          },
           api: {
             type: "openapi",
-            url: `${origin}/api/plugin/swarm`,
+            url: `${origin}/api/plugin/openapi.json`,
+          },
+          mcp: {
+            url: `${origin}/api/plugin/mcp`,
+            transport: "streamable-http",
           },
           contact_email: "ops@echo-op.com",
+          logo_url: `${origin}/__grok/icon-180.png`,
           endpoints: {
             run: {
               method: "POST",

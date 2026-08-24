@@ -9,21 +9,31 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const origin = `${url.protocol}//${url.host}`;
+        const agentParam = {
+          name: "x-echo-agent",
+          in: "header" as const,
+          required: true,
+          schema: {
+            type: "string",
+            enum: ["chatgpt", "grok", "claude", "codex", "gemini", "echo"],
+          },
+        };
         return Response.json(
           {
             openapi: "3.1.0",
             info: {
-              title: "Swarm",
+              title: "Echo Swarm",
               version: "1.0.0",
               description:
-                "Multi-lab LLM council. POST a brief. OAuth rides paid subs. FORGE and TEMPER are local metal.",
+                "Multi-lab LLM council. POST a brief or speak MCP JSON-RPC. Surface identity via x-echo-agent; optional Bearer when SWARM_MCP_TOKEN is set.",
             },
-            servers: [{ url: origin }],
+            servers: [{ url: origin, description: "Deployed Swarm origin" }],
             paths: {
               "/api/plugin/swarm": {
                 post: {
                   operationId: "swarmBrief",
                   summary: "Brief the council",
+                  parameters: [agentParam],
                   requestBody: {
                     required: true,
                     content: {
@@ -35,7 +45,13 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
                             prompt: { type: "string" },
                             mode: {
                               type: "string",
-                              enum: ["parallel", "roundtable", "debate", "conductor", "buildheavy"],
+                              enum: [
+                                "parallel",
+                                "roundtable",
+                                "debate",
+                                "conductor",
+                                "buildheavy",
+                              ],
                             },
                             host: { type: "string", enum: [...MODEL_IDS] },
                             seats: {
@@ -49,6 +65,7 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
                   },
                   responses: {
                     "200": { description: "Council turns" },
+                    "401": { description: "Missing agent or bearer" },
                   },
                 },
               },
@@ -56,7 +73,42 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
                 post: {
                   operationId: "swarmStream",
                   summary: "SSE stream of council events",
+                  parameters: [agentParam],
                   responses: { "200": { description: "text/event-stream" } },
+                },
+              },
+              "/api/plugin/mcp": {
+                get: {
+                  operationId: "listSwarmMcp",
+                  summary: "List MCP tools (requires x-echo-agent)",
+                  parameters: [agentParam],
+                  responses: { "200": { description: "Tool catalog" } },
+                },
+                post: {
+                  operationId: "swarmMcpCall",
+                  summary: "JSON-RPC initialize, tools/list, tools/call",
+                  parameters: [agentParam],
+                  requestBody: {
+                    required: true,
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            jsonrpc: { type: "string", enum: ["2.0"] },
+                            id: {},
+                            method: {
+                              type: "string",
+                              enum: ["initialize", "tools/list", "tools/call", "ping"],
+                            },
+                            params: { type: "object" },
+                          },
+                          required: ["jsonrpc", "method"],
+                        },
+                      },
+                    },
+                  },
+                  responses: { "200": { description: "JSON-RPC result" } },
                 },
               },
             },

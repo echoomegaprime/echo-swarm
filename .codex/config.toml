@@ -1,0 +1,8 @@
+# Project-scoped Codex MCP — Echo Swarm (trusted projects only).
+# Global install may also live in ~/.codex/config.toml.
+
+[mcp_servers.echo-swarm]
+url = "https://swarm-app.echo-op.com/api/plugin/mcp"
+http_headers = { "x-echo-agent" = "codex" }
+tool_timeout_sec = 120
+enabled = true

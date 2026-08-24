@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MODEL_IDS } from "@/lib/swarm/catalog";
 import { runSwarm } from "@/lib/swarm/engine.server";
+import { authorizePluginRequest } from "@/lib/swarm/mcp-auth";
 import { parseSwarmBody, PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
 
 export const Route = createFileRoute("/api/plugin/swarm")({
@@ -19,10 +20,20 @@ export const Route = createFileRoute("/api/plugin/swarm")({
               host: MODEL_IDS.join(" | "),
               seats: "ModelId[]",
             },
+            auth: {
+              headers: ["x-echo-agent", "Authorization: Bearer <SWARM_MCP_TOKEN when set>"],
+            },
           },
           { headers: cors },
         ),
       POST: async ({ request }) => {
+        const auth = authorizePluginRequest(request);
+        if (!auth.ok) {
+          return Response.json(
+            { ok: false, error: auth.error },
+            { status: auth.status, headers: cors },
+          );
+        }
         let body: unknown;
         try {
           body = await request.json();
@@ -34,7 +45,7 @@ export const Route = createFileRoute("/api/plugin/swarm")({
         }
         const input = parseSwarmBody(body as Record<string, unknown>, request);
         const result = await runSwarm(input);
-        return Response.json(result, { headers: cors });
+        return Response.json({ ...result, agent: auth.agent }, { headers: cors });
       },
     },
   },

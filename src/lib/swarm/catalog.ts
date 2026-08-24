@@ -125,8 +125,9 @@ export const DEFAULT_AUTH: Record<OAuthField, AuthMode> = {
   github: "oauth",
 };
 
-export const FORGE_DEFAULT_URL = "http://192.168.1.220:11434/v1";
-export const FORGE_DEFAULT_MODEL = "c3po-code:qcoder-64k";
+/** Local FORGE OpenAI-compatible base (loopback on the swarm host). */
+export const FORGE_DEFAULT_URL = "http://127.0.0.1:11435/v1";
+export const FORGE_DEFAULT_MODEL = "huihui_ai/qwen2.5-coder-abliterate:3b";
 export const TEMPER_DEFAULT_MODEL = "qwen3-image";
 
 export const GITHUB_MODELS_URL = "https://models.github.ai/inference/chat/completions";
@@ -595,7 +596,7 @@ export const VARIANTS: Record<ModelId, ModelVariant[]> = {
     { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   ],
   qwen: [
-    { id: FORGE_DEFAULT_MODEL, label: "QCoder 64k" },
+    { id: FORGE_DEFAULT_MODEL, label: "FORGE local Qwen coder" },
     { id: "qwen3:28b", label: "Qwen 3 28B Dense" },
     { id: "qwen3:32b", label: "Qwen 3 32B" },
     { id: "qwen3-coder:latest", label: "Qwen 3 Coder" },

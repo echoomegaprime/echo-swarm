@@ -1,0 +1,12 @@
+{
+  "name": "echo-swarm",
+  "version": "1.0.0",
+  "description": "Echo Swarm multi-LLM council MCP",
+  "transport": {
+    "type": "http",
+    "endpoint": "/api/plugin/mcp"
+  },
+  "headers": {
+    "x-echo-agent": "grok"
+  }
+}
