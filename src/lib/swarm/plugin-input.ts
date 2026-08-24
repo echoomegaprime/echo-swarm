@@ -106,6 +106,6 @@ export function parseSwarmBody(rec: Record<string, unknown>, request?: Request):
 export const PLUGIN_CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "content-type, authorization, x-openai-key, x-anthropic-key, x-google-key, x-deepseek-key, x-grok-key, x-github-token, x-forge-url, x-temper-url, x-groq-key, x-together-key, x-openrouter-key, x-samba-key, x-cohere-key, x-perplexity-key, x-mistral-key, x-cerebras-key, x-fireworks-key",
+    "content-type, authorization, x-echo-agent, x-echo-caller, x-swarm-agent, x-swarm-token, x-openai-key, x-anthropic-key, x-google-key, x-deepseek-key, x-grok-key, x-github-token, x-forge-url, x-temper-url, x-groq-key, x-together-key, x-openrouter-key, x-samba-key, x-cohere-key, x-perplexity-key, x-mistral-key, x-cerebras-key, x-fireworks-key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };

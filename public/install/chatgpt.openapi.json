@@ -1,0 +1,101 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Echo Swarm",
+    "version": "1.0.0",
+    "description": "Multi-lab LLM council MCP/OpenAPI. Surface identity via x-echo-agent. Lab secrets never stored in this schema."
+  },
+  "servers": [
+    {
+      "url": "https://swarm-app.echo-op.com",
+      "description": "Canonical deployed Swarm origin (FORGE, Cloudflare tunnel)"
+    }
+  ],
+  "paths": {
+    "/api/plugin/mcp": {
+      "get": {
+        "operationId": "listSwarmMcp",
+        "summary": "List Swarm MCP tools",
+        "parameters": [
+          {
+            "name": "x-echo-agent",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "enum": ["chatgpt", "grok", "claude", "codex", "gemini"] }
+          }
+        ],
+        "responses": { "200": { "description": "Tool catalog" } }
+      },
+      "post": {
+        "operationId": "swarmMcpCall",
+        "summary": "JSON-RPC initialize, tools/list, tools/call (swarm_ping / swarm_brief)",
+        "parameters": [
+          {
+            "name": "x-echo-agent",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "default": "chatgpt" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jsonrpc": { "type": "string", "enum": ["2.0"] },
+                  "id": {},
+                  "method": {
+                    "type": "string",
+                    "enum": ["initialize", "tools/list", "tools/call", "ping"]
+                  },
+                  "params": { "type": "object" }
+                },
+                "required": ["jsonrpc", "method"]
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "JSON-RPC result" } }
+      }
+    },
+    "/api/plugin/swarm": {
+      "post": {
+        "operationId": "swarmBriefHttp",
+        "summary": "Brief the council (non-MCP HTTP)",
+        "parameters": [
+          {
+            "name": "x-echo-agent",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "default": "chatgpt" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["prompt"],
+                "properties": {
+                  "prompt": { "type": "string" },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["parallel", "roundtable", "debate", "conductor", "buildheavy"]
+                  },
+                  "seats": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Council turns" } }
+      }
+    }
+  }
+}

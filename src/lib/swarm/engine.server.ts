@@ -133,7 +133,8 @@ export function resolveSeat(
     const env = forgeEnv();
     const url = keys.forgeUrl?.trim() || env.url || FORGE_DEFAULT_URL;
     const key = keys.forge?.trim() || env.key || "local";
-    const armed = Boolean(keys.forgeUrl?.trim() || keys.forge?.trim() || env.url);
+    // Local FORGE seat is always armed when a default OpenAI-compatible URL exists.
+    const armed = Boolean(url);
     if (!armed) return undefined;
     return { id, def, key, url: chatCompletionsUrl(url), model, kind: "local", auth: "key" };
   }
@@ -1569,10 +1570,10 @@ export async function runSwarm(
 
 export async function pingNodes(keys: ProviderKeys) {
   const status = providerStatus();
-  const forgeUrl = keys.forgeUrl?.trim() || forgeEnv().url;
+  const forgeUrl = keys.forgeUrl?.trim() || forgeEnv().url || FORGE_DEFAULT_URL;
   const temperUrl = keys.temperUrl?.trim() || temperEnv().url;
   const [forgeMs, temperMs] = await Promise.all([
-    pingModels(forgeUrl, keys.forge?.trim() || forgeEnv().key),
+    pingModels(forgeUrl, keys.forge?.trim() || forgeEnv().key || "local"),
     pingModels(temperUrl, keys.temper?.trim() || temperEnv().key),
   ]);
   return {
@@ -1581,6 +1582,7 @@ export async function pingNodes(keys: ProviderKeys) {
     temper: temperMs !== false || status.temper,
     forgeMs: forgeMs === false ? undefined : forgeMs,
     temperMs: temperMs === false ? undefined : temperMs,
+    forgeUrl: forgeMs === false ? undefined : forgeUrl,
   };
 }
 

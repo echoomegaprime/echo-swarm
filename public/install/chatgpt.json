@@ -1,0 +1,11 @@
+{
+  "name": "echo-swarm",
+  "mcp": {
+    "type": "http",
+    "url": "https://swarm-app.echo-op.com/api/plugin/mcp",
+    "headers": {
+      "x-echo-agent": "chatgpt"
+    }
+  },
+  "openapi": "/install/chatgpt.openapi.json"
+}

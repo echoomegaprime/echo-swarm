@@ -14,7 +14,8 @@
     "preview": "node scripts/with-app-env.mjs vite preview",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs'",
+    "test": "node --test scripts/",
+    "smoke:mcp": "node scripts/swarm-mcp-smoke.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

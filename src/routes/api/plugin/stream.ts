@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { runSwarm } from "@/lib/swarm/engine.server";
+import { authorizePluginRequest } from "@/lib/swarm/mcp-auth";
 import { parseSwarmBody, PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
 import type { SwarmEvent } from "@/lib/swarm/types";
 
@@ -8,6 +9,13 @@ export const Route = createFileRoute("/api/plugin/stream")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: cors }),
       POST: async ({ request }) => {
+        const auth = authorizePluginRequest(request);
+        if (!auth.ok) {
+          return Response.json(
+            { ok: false, error: auth.error },
+            { status: auth.status, headers: cors },
+          );
+        }
         let body: unknown;
         try {
           body = await request.json();
