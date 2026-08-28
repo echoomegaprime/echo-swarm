@@ -55,7 +55,19 @@ check("initialize", init.status === 200 && init.body?.result?.serverInfo?.name, 
 
 const list = await rpc("tools/list", {}, 2);
 const names = (list.body?.result?.tools || []).map((t) => t.name);
-check("tools_list", names.includes("swarm_ping") && names.includes("swarm_brief"), names);
+check(
+  "tools_list",
+  [
+    "swarm_ping",
+    "swarm_brief",
+    "swarm_convene",
+    "swarm_maximalist_health",
+    "swarm_maximalist_start",
+    "swarm_maximalist_result",
+    "swarm_maximalist_resume",
+  ].every((name) => names.includes(name)),
+  names,
+);
 
 const ping = await rpc("tools/call", { name: "swarm_ping", arguments: {} }, 3);
 const pingText = ping.body?.result?.content?.[0]?.text || "";
@@ -66,6 +78,19 @@ try {
   /* ignore */
 }
 check("swarm_ping", ping.status === 200 && typeof pingJson === "object", pingText.slice(0, 200));
+
+const maximalistHealth = await rpc(
+  "tools/call",
+  { name: "swarm_maximalist_health", arguments: {} },
+  4,
+);
+check(
+  "swarm_maximalist_health",
+  maximalistHealth.status === 200 &&
+    maximalistHealth.body?.result?.structuredContent?.ok === true &&
+    maximalistHealth.body?.result?.structuredContent?.profile === "live",
+  maximalistHealth.body,
+);
 
 const icon = await fetch(`${origin}/__grok/icon-180.png`);
 check("icon_180", icon.status === 200 && (icon.headers.get("content-type") || "").includes("png"));
