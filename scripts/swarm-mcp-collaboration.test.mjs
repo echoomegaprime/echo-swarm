@@ -10,11 +10,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("swarm_convene brings model work back as chat-ready structured output", async (t) => {
   let providerCalls = 0;
+  const providerModels = [];
   const provider = createHttpServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     providerCalls += 1;
+    providerModels.push(body.model);
     const fakeBearer = ["Bearer", "collaboration-test-token"].join(" ");
     const fakeApiKey = ["API_KEY", "collaboration-test-key"].join("=");
     const fakeGoogleKey = `AI${"za"}${"A".repeat(35)}`;
@@ -83,6 +85,16 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
   const { createCollaborationPlan, formatCollaborationResult } = await vite.ssrLoadModule(
     "/src/lib/swarm/mcp-collaboration.ts",
   );
+  const { FORGE_DEFAULT_MODEL, FORGE_DEFAULT_URL, MODELS } = await vite.ssrLoadModule(
+    "/src/lib/swarm/catalog.ts",
+  );
+  const { resolveSeat } = await vite.ssrLoadModule("/src/lib/swarm/engine.server.ts");
+  assert.equal(FORGE_DEFAULT_URL, "http://127.0.0.1:11438/v1");
+  assert.equal(FORGE_DEFAULT_MODEL, "c3po-code:echo-qwen38-abliterated-256k");
+  assert.equal(MODELS.qwen.name, "Qwen3.8 27B");
+  const forgeSeat = resolveSeat("qwen", {}, {}, {});
+  assert.equal(forgeSeat?.url, "http://127.0.0.1:11438/v1/chat/completions");
+  assert.equal(forgeSeat?.model, "c3po-code:echo-qwen38-abliterated-256k");
   const allPurposeModes = {
     brainstorm: "parallel",
     debate: "debate",
@@ -160,6 +172,12 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
       /collaboration-test-token|collaboration-test-key|AIzaA{35}/,
     );
   }
+  assert.ok(providerModels.length >= Object.keys(expectedModes).length);
+  assert.equal(
+    providerModels.every((model) => model === "c3po-code:echo-qwen38-abliterated-256k"),
+    true,
+    `qwen MCP calls used unexpected models: ${providerModels.join(", ")}`,
+  );
 
   const invalidResponse = await fetch(endpoint, {
     method: "POST",
