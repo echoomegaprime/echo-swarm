@@ -3,6 +3,11 @@ import { MODEL_IDS } from "@/lib/swarm/catalog";
 import { pingNodes, runSwarm } from "@/lib/swarm/engine.server";
 import { authorizePluginRequest } from "@/lib/swarm/mcp-auth";
 import { createCollaborationPlan, formatCollaborationResult } from "@/lib/swarm/mcp-collaboration";
+import {
+  handleMaximalistTool,
+  isMaximalistToolName,
+  MAXIMALIST_MCP_TOOLS,
+} from "@/lib/swarm/mcp-maximalist.server";
 import { parseSwarmBody, PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
 
 const tools = [
@@ -87,6 +92,7 @@ const tools = [
     description: "Ping live labs and local FORGE/TEMPER nodes.",
     inputSchema: { type: "object", properties: {} },
   },
+  ...MAXIMALIST_MCP_TOOLS,
 ];
 
 function unauthorized(auth: { status: number; error: string }, id: unknown) {
@@ -116,7 +122,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
           {
             protocol: "mcp",
             name: "echo-swarm",
-            version: "1.1.0",
+            version: "1.2.0",
             transport: "streamable-http",
             agent: auth.agent,
             tools,
@@ -162,9 +168,9 @@ export const Route = createFileRoute("/api/plugin/mcp")({
               result: {
                 protocolVersion: "2025-03-26",
                 capabilities: { tools: {} },
-                serverInfo: { name: "echo-swarm", version: "1.1.0" },
+                serverInfo: { name: "echo-swarm", version: "1.2.0" },
                 instructions:
-                  "Multi-LLM council. Call swarm_ping first, then use swarm_convene for chat-ready brainstorming, build help, or reports; swarm_brief remains available for raw council runs.",
+                  "Multi-LLM council plus the asynchronous MAXIMALIST_RECONSTRUCTED Fusion Brain. Call swarm_ping for council seats, swarm_convene for chat-ready collaboration, or swarm_maximalist_health then swarm_maximalist_start and swarm_maximalist_result for deep fusion runs.",
               },
             },
             { headers: cors },
@@ -254,6 +260,10 @@ export const Route = createFileRoute("/api/plugin/mcp")({
               },
               { headers: cors },
             );
+          }
+          if (isMaximalistToolName(name)) {
+            const result = await handleMaximalistTool(name, args);
+            return Response.json({ jsonrpc: "2.0", id, result }, { headers: cors });
           }
           return Response.json(
             { jsonrpc: "2.0", id, error: { code: -32601, message: `Unknown tool ${name}` } },
