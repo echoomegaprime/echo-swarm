@@ -126,8 +126,8 @@ export const DEFAULT_AUTH: Record<OAuthField, AuthMode> = {
 };
 
 /** Local FORGE OpenAI-compatible base (loopback on the swarm host). */
-export const FORGE_DEFAULT_URL = "http://127.0.0.1:11435/v1";
-export const FORGE_DEFAULT_MODEL = "huihui_ai/qwen2.5-coder-abliterate:3b";
+export const FORGE_DEFAULT_URL = "http://127.0.0.1:11438/v1";
+export const FORGE_DEFAULT_MODEL = "c3po-code:echo-qwen38-abliterated-256k";
 export const TEMPER_DEFAULT_MODEL = "qwen3-image";
 
 export const GITHUB_MODELS_URL = "https://models.github.ai/inference/chat/completions";
@@ -371,11 +371,11 @@ export const MODELS: Record<ModelId, ModelDef> = {
   },
   qwen: {
     id: "qwen",
-    name: "Qwen 28B",
+    name: "Qwen3.8 27B",
     lab: "FORGE",
     model: FORGE_DEFAULT_MODEL,
     monogram: "F",
-    voice: "Local dense coder. Uncensored, long context, owns the metal.",
+    voice: "Local 27.3B abliterated coder. 256K context, owns the metal.",
     kind: "local",
     group: "fleet",
     keyField: "forge",
@@ -596,7 +596,7 @@ export const VARIANTS: Record<ModelId, ModelVariant[]> = {
     { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   ],
   qwen: [
-    { id: FORGE_DEFAULT_MODEL, label: "FORGE local Qwen coder" },
+    { id: FORGE_DEFAULT_MODEL, label: "FORGE Qwen3.8 27B · 256K" },
     { id: "qwen3:28b", label: "Qwen 3 28B Dense" },
     { id: "qwen3:32b", label: "Qwen 3 32B" },
     { id: "qwen3-coder:latest", label: "Qwen 3 Coder" },
@@ -626,7 +626,12 @@ export function chosenModel(
   if (!viaGithub) return raw;
   if (raw.includes("/")) return raw;
   if (raw.startsWith("claude-")) return `anthropic/${raw}`;
-  if (raw.startsWith("gpt-") || raw.startsWith("o1") || raw.startsWith("o3") || raw.startsWith("o4")) {
+  if (
+    raw.startsWith("gpt-") ||
+    raw.startsWith("o1") ||
+    raw.startsWith("o3") ||
+    raw.startsWith("o4")
+  ) {
     return `openai/${raw}`;
   }
   return raw;
@@ -791,7 +796,7 @@ export const KEY_DOCS: Record<
     label: "FORGE",
     href: "https://github.com/echoomegaprime/echo-qcoder",
     placeholder: "local or node token",
-    hint: "Qwen 3.6 27B dense on FORGE Ollama. Paste a public tunnel if this preview cannot see 192.168.1.220.",
+    hint: "Qwen3.8 abliterated 27.3B on FORGE Ollama with 256K context. Paste a public tunnel if this preview cannot reach FORGE.",
   },
   temper: {
     label: "TEMPER",
