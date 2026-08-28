@@ -8,7 +8,7 @@ import { createServer as createViteServer } from "vite";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-test("swarm_collaborate brings model work back as chat-ready structured output", async (t) => {
+test("swarm_convene brings model work back as chat-ready structured output", async (t) => {
   let providerCalls = 0;
   const provider = createHttpServer(async (request, response) => {
     const chunks = [];
@@ -45,6 +45,10 @@ test("swarm_collaborate brings model work back as chat-ready structured output",
   const providerAddress = provider.address();
   assert(providerAddress && typeof providerAddress === "object");
   const forgeUrl = `http://127.0.0.1:${providerAddress.port}/v1`;
+  const agentHeaders = {
+    "content-type": "application/json",
+    "x-echo-agent": "acceptance-test",
+  };
 
   const vite = await createViteServer({
     root,
@@ -59,15 +63,15 @@ test("swarm_collaborate brings model work back as chat-ready structured output",
 
   const listResponse = await fetch(endpoint, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: agentHeaders,
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
   });
   assert.equal(listResponse.status, 200);
   const listBody = await listResponse.json();
   const collaborationTool = listBody.result.tools.find(
-    (candidate) => candidate.name === "swarm_collaborate",
+    (candidate) => candidate.name === "swarm_convene",
   );
-  assert(collaborationTool, "tools/list must advertise swarm_collaborate");
+  assert(collaborationTool, "tools/list must advertise swarm_convene");
   assert.equal(collaborationTool.outputSchema.type, "object");
   assert.deepEqual(collaborationTool.annotations, {
     readOnlyHint: true,
@@ -75,6 +79,23 @@ test("swarm_collaborate brings model work back as chat-ready structured output",
     idempotentHint: false,
     openWorldHint: true,
   });
+
+  const { createCollaborationPlan } = await vite.ssrLoadModule(
+    "/src/lib/swarm/mcp-collaboration.ts",
+  );
+  const allPurposeModes = {
+    brainstorm: "parallel",
+    debate: "debate",
+    build: "buildheavy",
+    review: "roundtable",
+    plan: "conductor",
+    report: "conductor",
+  };
+  for (const [purpose, expectedMode] of Object.entries(allPurposeModes)) {
+    const plan = createCollaborationPlan("Map this request", purpose);
+    assert.equal(plan.error, undefined, `${purpose} should create a valid plan`);
+    assert.equal(plan.mode, expectedMode, `${purpose} should map to ${expectedMode}`);
+  }
 
   const expectedModes = {
     brainstorm: "parallel",
@@ -86,7 +107,7 @@ test("swarm_collaborate brings model work back as chat-ready structured output",
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "content-type": "application/json",
+        ...agentHeaders,
         "x-forge-url": forgeUrl,
       },
       body: JSON.stringify({
@@ -94,12 +115,11 @@ test("swarm_collaborate brings model work back as chat-ready structured output",
         id: id++,
         method: "tools/call",
         params: {
-          name: "swarm_collaborate",
+          name: "swarm_convene",
           arguments: {
             task: `Handle this ${purpose} request`,
             purpose,
-            host: "qwen",
-            seats: ["qwen"],
+            models: ["qwen"],
           },
         },
       }),
@@ -123,14 +143,14 @@ test("swarm_collaborate brings model work back as chat-ready structured output",
 
   const invalidResponse = await fetch(endpoint, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: agentHeaders,
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: id++,
       method: "tools/call",
       params: {
-        name: "swarm_collaborate",
-        arguments: { task: "   ", purpose: "brainstorm", host: "qwen", seats: ["qwen"] },
+        name: "swarm_convene",
+        arguments: { task: "   ", purpose: "brainstorm", models: ["qwen"] },
       },
     }),
   });

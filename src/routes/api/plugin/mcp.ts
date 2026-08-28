@@ -7,9 +7,9 @@ import { parseSwarmBody, PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
 
 const tools = [
   {
-    name: "swarm_collaborate",
+    name: "swarm_convene",
     description:
-      "Use this when the user asks to bring other models into the current chat for brainstorming, build assistance, or a consolidated report. Runs the selected live seats and returns chat-ready Markdown plus structured results; it does not apply generated files.",
+      "Bring other models into this chat for brainstorming, debate, build assistance, review, planning, or a consolidated report. Runs the selected live models and returns chat-ready Markdown plus structured results; it does not apply generated files.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -22,26 +22,29 @@ const tools = [
         },
         purpose: {
           type: "string",
-          enum: ["brainstorm", "build", "report"],
+          enum: ["brainstorm", "debate", "build", "review", "plan", "report"],
           description:
-            "brainstorm runs parallel peers, build runs Build Heavy, and report uses the conductor.",
+            "Maps to parallel, debate, Build Heavy, roundtable, or conductor mode. Defaults to brainstorm.",
         },
-        host: { type: "string", enum: [...MODEL_IDS] },
-        seats: {
+        models: {
           type: "array",
           minItems: 1,
           maxItems: 18,
           uniqueItems: true,
           items: { type: "string", enum: [...MODEL_IDS] },
+          description: "Models to convene; omit to use the configured default live seat.",
         },
       },
-      required: ["task", "purpose"],
+      required: ["task"],
     },
     outputSchema: {
       type: "object",
       properties: {
         ok: { type: "boolean" },
-        purpose: { type: "string", enum: ["brainstorm", "build", "report"] },
+        purpose: {
+          type: "string",
+          enum: ["brainstorm", "debate", "build", "review", "plan", "report"],
+        },
         mode: {
           type: "string",
           enum: ["parallel", "roundtable", "debate", "conductor", "buildheavy"],
@@ -161,7 +164,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
                 capabilities: { tools: {} },
                 serverInfo: { name: "echo-swarm", version: "1.1.0" },
                 instructions:
-                  "Multi-LLM council. Call swarm_ping first, then use swarm_collaborate for chat-ready brainstorming, build help, or reports; swarm_brief remains available for raw council runs.",
+                  "Multi-LLM council. Call swarm_ping first, then use swarm_convene for chat-ready brainstorming, build help, or reports; swarm_brief remains available for raw council runs.",
               },
             },
             { headers: cors },
@@ -209,7 +212,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
               { headers: cors },
             );
           }
-          if (name === "swarm_collaborate") {
+          if (name === "swarm_convene") {
             const plan = createCollaborationPlan(args.task, args.purpose);
             if ("error" in plan) {
               return Response.json(
@@ -221,16 +224,8 @@ export const Route = createFileRoute("/api/plugin/mcp")({
                     content: [{ type: "text", text: plan.error }],
                     structuredContent: {
                       ok: false,
-                      purpose:
-                        args.purpose === "build" || args.purpose === "report"
-                          ? args.purpose
-                          : "brainstorm",
-                      mode:
-                        args.purpose === "build"
-                          ? "buildheavy"
-                          : args.purpose === "report"
-                            ? "conductor"
-                            : "parallel",
+                      purpose: plan.purpose,
+                      mode: plan.mode,
                       turns: [],
                       insights: [],
                       skipped: [],
@@ -241,8 +236,13 @@ export const Route = createFileRoute("/api/plugin/mcp")({
                 { headers: cors },
               );
             }
+            const models = Array.isArray(args.models) ? args.models : undefined;
             const input = parseSwarmBody(
-              { ...args, prompt: plan.prompt, mode: plan.mode },
+              {
+                prompt: plan.prompt,
+                mode: plan.mode,
+                ...(models ? { seats: models, host: models[0] } : {}),
+              },
               request,
             );
             const result = await runSwarm(input);

@@ -1,7 +1,7 @@
 import type { SwarmMode } from "./catalog";
 import type { SwarmTurnResult } from "./types";
 
-export type CollaborationPurpose = "brainstorm" | "build" | "report";
+export type CollaborationPurpose = "brainstorm" | "debate" | "build" | "review" | "plan" | "report";
 
 export type CollaborationPlan = {
   purpose: CollaborationPurpose;
@@ -31,13 +31,19 @@ type CollaborationOutput = {
 
 const PURPOSE_MODES: Record<CollaborationPurpose, SwarmMode> = {
   brainstorm: "parallel",
+  debate: "debate",
   build: "buildheavy",
+  review: "roundtable",
+  plan: "conductor",
   report: "conductor",
 };
 
 const PURPOSE_TITLES: Record<CollaborationPurpose, string> = {
   brainstorm: "Brainstorm",
+  debate: "Debate",
   build: "Build assistance",
+  review: "Review",
+  plan: "Plan",
   report: "Consolidated report",
 };
 
@@ -48,20 +54,38 @@ const MAX_CHAT_CHARS = 30_000;
 export function createCollaborationPlan(
   task: unknown,
   purpose: unknown,
-): CollaborationPlan | { error: string } {
+): CollaborationPlan | (CollaborationPlan & { error: string }) {
+  const normalizedPurpose: CollaborationPurpose | undefined =
+    purpose === undefined
+      ? "brainstorm"
+      : purpose === "brainstorm" ||
+          purpose === "debate" ||
+          purpose === "build" ||
+          purpose === "review" ||
+          purpose === "plan" ||
+          purpose === "report"
+        ? purpose
+        : undefined;
+  const errorPurpose = normalizedPurpose ?? "brainstorm";
+  const errorPlan = (error: string): CollaborationPlan & { error: string } => ({
+    purpose: errorPurpose,
+    mode: PURPOSE_MODES[errorPurpose],
+    prompt: "",
+    error,
+  });
   if (typeof task !== "string" || !task.trim()) {
-    return { error: "Provide a non-empty task for the Swarm collaboration." };
+    return errorPlan("Provide a non-empty task for the Swarm collaboration.");
   }
   const normalizedTask = task.trim();
   if (normalizedTask.length > MAX_TASK_CHARS) {
-    return { error: `The collaboration task is too long (maximum ${MAX_TASK_CHARS} characters).` };
+    return errorPlan(`The collaboration task is too long (maximum ${MAX_TASK_CHARS} characters).`);
   }
-  if (purpose !== "brainstorm" && purpose !== "build" && purpose !== "report") {
-    return { error: "Purpose must be brainstorm, build, or report." };
+  if (!normalizedPurpose) {
+    return errorPlan("Purpose must be brainstorm, debate, build, review, plan, or report.");
   }
 
   const prompt =
-    purpose === "report"
+    normalizedPurpose === "report"
       ? [
           "Create a decision-ready report for the current chat.",
           "Synthesize the evidence, agreements, disagreements, risks, and recommended next actions.",
@@ -70,7 +94,11 @@ export function createCollaborationPlan(
         ].join("\n")
       : normalizedTask;
 
-  return { purpose, mode: PURPOSE_MODES[purpose], prompt };
+  return {
+    purpose: normalizedPurpose,
+    mode: PURPOSE_MODES[normalizedPurpose],
+    prompt,
+  };
 }
 
 export function formatCollaborationResult(
