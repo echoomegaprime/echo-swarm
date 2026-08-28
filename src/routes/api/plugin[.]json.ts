@@ -11,9 +11,9 @@ export const Route = createFileRoute("/api/plugin.json")({
           name_for_human: "Swarm",
           name_for_model: "swarm_council",
           description_for_human:
-            "Multi-lab LLM council. OAuth rides paid subs. FORGE and TEMPER are local.",
+            "Multi-lab LLM council with an asynchronous Maximalist Fusion Brain. OAuth rides paid subs. FORGE and TEMPER are local.",
           description_for_model:
-            "Call Swarm to brief Grok, GPT, Claude, Gemini, DeepSeek, GitHub Copilot, FORGE Qwen 28B, and TEMPER Qwen Image together. Prefer OAuth tokens from Claude Code, Codex, Grok, DeepSeek, and `gh auth token`. Modes: parallel, roundtable, debate, conductor. Host plugins: call_peer, pin_insight, recall_insights, make_image, now, math.",
+            "Call Swarm to brief Grok, GPT, Claude, Gemini, DeepSeek, GitHub Copilot, FORGE Qwen3.8 27B (abliterated, 256K context), and TEMPER Qwen Image together. For deep asynchronous fusion, use the MCP Maximalist health, start, result, and resume tools; completed results preserve dissent, uncertainty, and provenance. Prefer OAuth tokens from Claude Code, Codex, Grok, DeepSeek, and `gh auth token`. Modes: parallel, roundtable, debate, conductor. Host plugins: call_peer, pin_insight, recall_insights, make_image, now, math.",
           auth: {
             type: "header",
             instructions:
@@ -37,16 +37,7 @@ export const Route = createFileRoute("/api/plugin.json")({
                 prompt: "string",
                 mode: "parallel | roundtable | debate | conductor | buildheavy",
                 host: "grok | gpt | claude | gemini | deepseek | mistral | openrouter | groq | together | samba | cerebras | fireworks | perplexity | cohere | qwen | qwenimg | github",
-                seats: [
-                  "grok",
-                  "gpt",
-                  "claude",
-                  "gemini",
-                  "deepseek",
-                  "qwen",
-                  "qwenimg",
-                  "github",
-                ],
+                seats: ["grok", "gpt", "claude", "gemini", "deepseek", "qwen", "qwenimg", "github"],
                 keys: {
                   grok: "oauth or api",
                   openai: "codex oauth or api",
