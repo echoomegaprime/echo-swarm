@@ -148,12 +148,48 @@ export function formatCollaborationResult(
     modelId: seat.modelId,
     reason: redact(seat.reason).slice(0, 1_000),
   }));
+  const contributorCount = turns.filter((turn) => turn.content.trim().length > 0).length;
+  if (contributorCount === 0 && insights.length === 0) {
+    const error = "No selected model returned usable output.";
+    const diagnostics = [
+      ...turns.map(
+        (turn) => `- **${turn.modelId}:** ${turn.error || "The model returned an empty response."}`,
+      ),
+      ...skipped.map((seat) => `- **${seat.modelId}:** ${seat.reason}`),
+    ];
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: [
+            "# Swarm Collaboration",
+            "",
+            "**Status:** failed",
+            "**Contributors:** 0",
+            "",
+            error,
+            ...(diagnostics.length ? ["", "## Model diagnostics", "", ...diagnostics] : []),
+          ].join("\n"),
+        },
+      ],
+      structuredContent: {
+        ok: false,
+        purpose: plan.purpose,
+        mode: plan.mode,
+        turns,
+        insights,
+        skipped,
+        error,
+      },
+    };
+  }
   const lines = [
     "# Swarm Collaboration",
     "",
     `**Purpose:** ${PURPOSE_TITLES[plan.purpose]}`,
     `**Mode:** ${plan.mode}`,
-    `**Contributors:** ${turns.length}`,
+    `**Contributors:** ${contributorCount}`,
     "",
   ];
   for (const turn of turns) {

@@ -80,7 +80,7 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
     openWorldHint: true,
   });
 
-  const { createCollaborationPlan } = await vite.ssrLoadModule(
+  const { createCollaborationPlan, formatCollaborationResult } = await vite.ssrLoadModule(
     "/src/lib/swarm/mcp-collaboration.ts",
   );
   const allPurposeModes = {
@@ -96,6 +96,26 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
     assert.equal(plan.error, undefined, `${purpose} should create a valid plan`);
     assert.equal(plan.mode, expectedMode, `${purpose} should map to ${expectedMode}`);
   }
+
+  const abortedPlan = createCollaborationPlan("Ask the live model", "brainstorm");
+  const aborted = formatCollaborationResult(abortedPlan, {
+    ok: true,
+    turns: [
+      {
+        modelId: "qwen",
+        model: "local-test-model",
+        content: "",
+        error: "This operation was aborted",
+        traces: [],
+      },
+    ],
+    insights: [],
+    skipped: [],
+  });
+  assert.equal(aborted.isError, true, "all-aborted model work must not report MCP success");
+  assert.equal(aborted.structuredContent.ok, false);
+  assert.equal(aborted.structuredContent.turns[0].modelId, "qwen");
+  assert.match(aborted.content[0].text, /no selected model returned usable output/i);
 
   const expectedModes = {
     brainstorm: "parallel",
