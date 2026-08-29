@@ -17,6 +17,7 @@ import {
 const execFileAsync = promisify(execFile);
 const WRAPPER = join(projectRoot(), "scripts/with-app-env.mjs");
 const PRINT_FLAG = "process.stdout.write(String(process.env.VITE_AUTH_ENABLED));";
+const PRINT_FIRST_ARG = "process.stdout.write(String(process.argv[1]));";
 
 function makeWorkspace(appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "app-env-"));
@@ -95,6 +96,18 @@ test("the wrapped command sees an explicit override, not the file value", async 
     { env: { ...process.env, VITE_AUTH_ENABLED: "true" } },
   );
   assert.equal(stdout, "true");
+});
+
+test("the wrapper passes shell metacharacters as a literal argument", async () => {
+  const literal = "value;echo SHELL_EVAL && (still-literal)";
+  const { stdout } = await execFileAsync(process.execPath, [
+    WRAPPER,
+    process.execPath,
+    "-e",
+    PRINT_FIRST_ARG,
+    literal,
+  ]);
+  assert.equal(stdout, literal);
 });
 
 test("the wrapper propagates the command's exit code", async () => {

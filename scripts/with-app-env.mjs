@@ -93,22 +93,12 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  // shell:true so Windows resolves node_modules/.bin shims (vite.cmd etc.) — a bare
-  // spawn("vite") throws ENOENT on Windows where the binary is vite.cmd.
-  //
-  // With shell:true on Windows, Node hands `command` + `args` to cmd.exe as one
-  // concatenated string with no quoting of its own. When `command` is an already
-  // -resolved absolute path containing a space (e.g. `process.execPath` resolving
-  // to `C:\Program Files\nodejs\node.exe`), cmd.exe tokenizes at the space and
-  // reports `'C:\Program' is not recognized` — the command never runs. Quoting
-  // `command` before the shell sees it is the standard fix; it's a no-op on
-  // POSIX (shell:true there goes through /bin/sh, which already handles this
-  // correctly for an unquoted bare word) and for Windows commands with no space.
-  const spawnCommand =
-    process.platform === "win32" && /\s/.test(command) && !command.startsWith('"')
-      ? `"${command}"`
-      : command;
-  const child = spawn(spawnCommand, args, { stdio: "inherit", env, shell: true });
+  // Execute the argument vector directly. Passing it through cmd.exe or /bin/sh
+  // makes ordinary JavaScript arguments (parentheses, quotes, semicolons) become
+  // shell syntax and creates an injection boundary. Package scripts therefore
+  // invoke portable JavaScript bin entrypoints through `node` instead of relying
+  // on platform-specific `.cmd` shims under node_modules/.bin.
+  const child = spawn(command, args, { stdio: "inherit", env, shell: false });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
