@@ -209,7 +209,7 @@ def _probe_db() -> bool:
             cur.execute("SELECT 1")
         return True
     except Exception as exc:
-        logger.warning("health_db_failed: %s", exc)
+        logger.warning("health_db_failed error_type=%s", type(exc).__name__)
         return False
 
 
@@ -221,7 +221,7 @@ def _probe_llm() -> bool:
         with socket.create_connection((host, port), timeout=2):
             return True
     except Exception as exc:
-        logger.warning("health_llm_failed: %s", exc)
+        logger.warning("health_llm_failed error_type=%s", type(exc).__name__)
         return False
 
 
@@ -241,7 +241,7 @@ def startup() -> None:
     try:
         _init_db()
     except Exception as exc:
-        logger.warning("schema init deferred/failed: %s", exc)
+        logger.warning("schema_init_deferred error_type=%s", type(exc).__name__)
     logger.info("started service=%s version=%s port=%s pool=%s", SERVICE, VERSION, PORT, PG_POOL is not None)
 
 
@@ -320,8 +320,8 @@ def trinity_consult(body: TrinityConsultRequest) -> dict[str, Any]:
             max_tokens=2000,
         )
     except Exception as exc:
-        logger.error("trinity_consult_failed voice=%s err=%s", voice_key, exc)
-        return {"ok": False, "error": str(exc)}
+        logger.error("trinity_consult_failed voice=%s error_type=%s", voice_key, type(exc).__name__)
+        return {"ok": False, "error": "trinity consultation failed"}
     return {
         "ok": True,
         "consultation": {
@@ -366,8 +366,8 @@ def trinity_decide(body: TrinityDecideRequest) -> dict[str, Any]:
             key, data = fut.result()
             voices[key] = data
     except Exception as exc:
-        logger.error("trinity_decide_failed err=%s", exc)
-        return {"ok": False, "error": str(exc)}
+        logger.error("trinity_decide_failed error_type=%s", type(exc).__name__)
+        return {"ok": False, "error": "trinity decision failed"}
 
     synthesis_prompt = (
         f"Question: {body.question}\n\n"
@@ -387,7 +387,7 @@ def trinity_decide(body: TrinityDecideRequest) -> dict[str, Any]:
         )
         final_text = final_r["text"]
     except Exception as exc:
-        logger.error("trinity_synthesis_failed err=%s", exc)
+        logger.error("trinity_synthesis_failed error_type=%s", type(exc).__name__)
         final_text = voices.get("sage", {}).get("text", "")
 
     final_grade = _parse_grade(final_text)
@@ -424,8 +424,8 @@ def swarm_think(body: SwarmThinkRequest) -> dict[str, Any]:
     try:
         result = chat_completion(system=system, user=user, temperature=0.4, max_tokens=3000)
     except Exception as exc:
-        logger.error("swarm_think_failed err=%s", exc)
-        return {"ok": False, "error": str(exc)}
+        logger.error("swarm_think_failed error_type=%s", type(exc).__name__)
+        return {"ok": False, "error": "swarm synthesis failed"}
     return {
         "ok": True,
         "synthesis": result["text"],
@@ -495,8 +495,8 @@ def llm_hybrid_run(body: HybridRunRequest) -> dict[str, Any]:
                 text = ordered.get(i, "")
                 results.append({"response": text, "text": text})
         except Exception as exc:
-            logger.error("ensemble_failed err=%s", exc)
-            return {"ok": False, "error": str(exc)}
+            logger.error("ensemble_failed error_type=%s", type(exc).__name__)
+            return {"ok": False, "error": "ensemble execution failed"}
         return {"ok": True, "method": "ensemble", "results": results}
 
     if method == "debate":
@@ -565,8 +565,8 @@ def llm_hybrid_run(body: HybridRunRequest) -> dict[str, Any]:
             )
             final_text = final_judge["text"]
         except Exception as exc:
-            logger.error("debate_failed err=%s", exc)
-            return {"ok": False, "error": str(exc)}
+            logger.error("debate_failed error_type=%s", type(exc).__name__)
+            return {"ok": False, "error": "debate execution failed"}
         # str.join path (hotpath.transcript_join) — avoids O(k²) += growth
         transcript = transcript_join(
             [
@@ -593,7 +593,8 @@ def llm_hybrid_run(body: HybridRunRequest) -> dict[str, Any]:
         try:
             r = chat_completion(system=body.system_prompt or "You are a helpful AI.", user=body.prompt, temperature=temperature, max_tokens=max_tokens)
         except Exception as exc:
-            return {"ok": False, "error": str(exc)}
+            logger.error("chain_failed error_type=%s", type(exc).__name__)
+            return {"ok": False, "error": "chain execution failed"}
         return {"ok": True, "method": "chain", "content": r["text"], "results": [{"response": r["text"], "text": r["text"]}]}
 
     return JSONResponse(status_code=400, content={"ok": False, "error": f"Unknown method: {method}"})

@@ -96,6 +96,34 @@ def test_hybrid_debate_contract(client: TestClient) -> None:
     assert body["final"]
 
 
+@pytest.mark.parametrize(
+    ("path", "payload", "expected_error"),
+    [
+        ("/trinity/consult", {"question": "Grade this comic.", "voice": "SAGE"}, "trinity consultation failed"),
+        ("/trinity/decide", {"question": "Final grade?"}, "trinity decision failed"),
+        ("/swarm/think", {"question": "Research this issue."}, "swarm synthesis failed"),
+        ("/llm/hybrids/run", {"method": "ensemble", "prompt": "Grade comic"}, "ensemble execution failed"),
+        ("/llm/hybrids/run", {"method": "debate", "prompt": "Grade comic", "options": {"rounds": 1}}, "debate execution failed"),
+        ("/llm/hybrids/run", {"method": "chain", "prompt": "Grade comic"}, "chain execution failed"),
+    ],
+)
+def test_llm_failures_do_not_expose_exception_details(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+    path: str,
+    payload: dict[str, object],
+    expected_error: str,
+) -> None:
+    secret_detail = "internal-provider-token-and-stack-detail"
+    with patch("app.chat_completion", side_effect=RuntimeError(secret_detail)):
+        resp = client.post(path, json=payload)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {"ok": False, "error": expected_error}
+    assert secret_detail not in resp.text
+    assert secret_detail not in caplog.text
+
+
 def test_artifacts_roundtrip(client: TestClient) -> None:
     key = "comics/test/smoke.jpg"
     payload = b"\xff\xd8\xff\xe0fake-jpeg"

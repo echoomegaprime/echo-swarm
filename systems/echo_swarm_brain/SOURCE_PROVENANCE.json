@@ -5,11 +5,11 @@
   "retrieved_at_utc": "2026-08-29T14:03:44.3224102Z",
   "verification": "Before repository sanitization, SHA-256 matched the canonical echo-omnipresence-runtime/SYSTEMS/echo_swarm_brain copy for every recovered file",
   "repository_transformations": {
-    "reason": "Independent PR review required removal of embedded operational identifiers and credentials, loopback-only service binding, fail-closed Cloudflare responses, and unpredictable smoke-test temporary files. Source hashes remain recorded under files; quench_sha256 binds the sanitized repository bytes.",
+    "reason": "Independent PR and hosted CodeQL review required removal of embedded operational identifiers and credentials, loopback-only service binding, fail-closed Cloudflare responses, non-disclosure of provider exception details, and unpredictable smoke-test temporary files. Source hashes remain recorded under files; quench_sha256 binds the sanitized repository bytes.",
     "files": {
       "app.py": {
-        "quench_sha256": "8c43377966199aa984dd5a1190c0405692a878b41f4d9d466bb34d0b1e5e94ba",
-        "changes": "replaced private model-health fallback and public-bind run guidance with loopback defaults"
+        "quench_sha256": "9c59bc28d1735663056a990f8c966f05466fa857ecc9b11965ed5ea82933483b",
+        "changes": "replaced private model-health fallback and public-bind run guidance with loopback defaults; replaced external exception details and potentially sensitive error logs with bounded public messages and exception-type telemetry"
       },
       "fix_tunnel_order.py": {
         "quench_sha256": "840f18f5b745813fd3cce64472aa9c2e9e60b21907f1e3edf5ddd29890627795",
@@ -34,6 +34,10 @@
       "tests/test_hotpath.py": {
         "quench_sha256": "1ddf2c2ecccb46dd1a5a4b8739518d2bfb9f159d12e9cdd36acf5ff38f1327ef",
         "changes": "replaced a duplicate-tuple no-op assertion with an exact final-grade contract assertion"
+      },
+      "tests/test_smoke.py": {
+        "quench_sha256": "8e3eec40f16bc2d7a737e7f9e946ff763de26f21cb11c8b61a04113b004d1d3a",
+        "changes": "added regression coverage proving provider exception details are absent from HTTP responses and captured logs across all six affected LLM execution paths"
       },
       "verify_perf_pass.sh": {
         "quench_sha256": "be3a196f4ea138aed06ab422b1b6d4f4b19cce28d77790e58c7acc39d70b2e51",
