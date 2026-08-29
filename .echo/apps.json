@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "apps": {
+    "certification-forge": { "enabled": true },
+    "release-sentinel": { "enabled": true }
+  }
+}
