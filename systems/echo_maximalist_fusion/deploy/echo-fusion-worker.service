@@ -1,0 +1,24 @@
+[Unit]
+Description=Echo Fusion Worker — async host for the echo_fusion engine (echo.fusion.run)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forge
+WorkingDirectory=/home/forge/echo-maximalist-swarm
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/home/forge/echo-maximalist-swarm/src
+Environment=FUSION_PROFILE=live
+Environment=FUSION_SEATS_PATH=/home/forge/echo-maximalist-swarm/config/seats.yaml
+Environment=FUSION_LOG_LEVEL=INFO
+EnvironmentFile=-/etc/echo/echo-fusion-worker.env
+StandardInput=null
+# Bind loopback only — the sole caller is the SDK gate on this same host.
+ExecStart=/usr/bin/python3 -m uvicorn echo_fusion_worker.app:app --host 127.0.0.1 --port 8157 --log-level info
+Restart=on-failure
+RestartSec=5
+MemoryMax=768M
+
+[Install]
+WantedBy=multi-user.target

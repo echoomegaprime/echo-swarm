@@ -1,0 +1,71 @@
+{
+  "source_host": "FORGE",
+  "source_path": "/home/forge/echo-maximalist-swarm",
+  "source_revision": "6a26110ef6b896e1bb9708fba9e815bf93e944fb",
+  "source_remote": null,
+  "retrieved_by": "QUENCH",
+  "retrieved_at": "2026-08-29T14:27:03.5078803Z",
+  "excluded": [
+    ".git/",
+    ".venv/",
+    "runtime/",
+    "logs/",
+    "/etc/echo/echo-fusion-worker.env"
+  ],
+  "service": {
+    "unit": "echo-fusion-worker.service",
+    "working_directory": "/home/forge/echo-maximalist-swarm",
+    "module": "echo_fusion_worker.app:app",
+    "bind": "127.0.0.1:8157"
+  },
+  "repository_transformations": {
+    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
+    "files": {
+      "src/echo_fusion/arbitration.py": {
+        "quench_sha256": "4a478cf1f62bbc8b66ed873f038bbc67f364df90611a7bd3b68238c852b0518f",
+        "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
+      },
+      "src/echo_fusion_worker/app.py": {
+        "quench_sha256": "366a3d3e78ed656863d652da4719a7fc15a39bfcf547a7ac45b2ed74d9515e7b",
+        "changes": "idempotent wait:true retries now wait for an existing run and return its completed result or error inline"
+      },
+      "src/echo_fusion/schemas.py": {
+        "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
+        "changes": "unverified citation, tool-result, and retrieval labels are capped until a trusted verifier marks them verified"
+      },
+      "src/echo_fusion_worker/live_adapters.py": {
+        "quench_sha256": "b645954f9d44d20148db8ca64931135f89b6eb26e3df325bc41c7d2a11e3df73",
+        "changes": "sovereign key parsing now partitions and trims the assignment instead of requiring exact no-whitespace syntax"
+      },
+      "tests/test_invariants.py": {
+        "quench_sha256": "c20c1c641819f8f9bf5627d7ff5d6ed8a8c755f9491655b1abeee2955c2be362",
+        "changes": "the strong-tier cascade control now uses a trusted extractor that explicitly verifies evidence before suppressing elite review"
+      }
+    }
+  },
+  "sha256": {
+    ".gitignore": "97F9921077C71ED9C92AE9EC12F28E7D2163AE265F1F587B6B03BB584077CDD8",
+    "CLAUDE.md": "D8E283BB63350B41ADD858E2FF1D6A975195174426167D07A5AFE89D8CDD4A91",
+    "config/seats.yaml": "F99FB07D52744B68D89726895B7C740EADE382434C441E209CF8146428D56A95",
+    "deploy/echo-fusion-worker.service": "71AB58EE52625977CCA4A59A9C38BC8A245BDA85D2328FAE2711294AFEA681DC",
+    "docs/CONSOLIDATED_BUILD_SPEC.md": "D5C5879F86FCC366F6C449069D1FEC56ACFB6CC1B79AB2A3E7EDD342AA52599A",
+    "docs/reviews/tri-review-fable-5.md": "6669AA51551876BECD2FF1404FDB192FF8EB235447912EF44D1F16B4BEA50F3B",
+    "docs/reviews/tri-review-grok-4.6.md": "ECB5C5D7A877A5EC819994B3043A925926E2868DAA6AE30484414657B4DBAF3C",
+    "docs/reviews/tri-review-opus-5.md": "75FDCE44E026A148DD9A2AE45836EA9BB1FCAD0146DA5350205A37606874D133",
+    "README.md": "5186C129A5A75C407220165E2DC3359ED69A42B5501E3C8A0F6943BE1E4FCB5F",
+    "smoke_live.py": "28B541FC790EC1C467B01CC3283716F10A7E7EE19EFBD014D53BC82DA6320797",
+    "src/echo_fusion/__init__.py": "A82944DEFBD1022C77E2DF8283FE60E484F7B4E1259E994A860993E4115E3BC4",
+    "src/echo_fusion/adapters.py": "728BBFDBBA43BE5705619072639C472B6047FBA02138C4C0382B9497E9386E5F",
+    "src/echo_fusion/arbitration.py": "01BECA262C71563EBF16B6D73802EE9B269CCAFEDEBC7FDB4A5952ACF15F189C",
+    "src/echo_fusion/engine.py": "37E01AE4BD905E73E1DBBE593287B5ACE391994C067AA338081EB10A2F4EA053",
+    "src/echo_fusion/schemas.py": "B8B156E345E5D022D4737B378236E3DB0A3060A534344E5A100CB0D7DCEA54FD",
+    "src/echo_fusion_worker/__init__.py": "F0E1C2694468A26684556753E052112E73675C9A39D92F49CC075D9583AF4CDA",
+    "src/echo_fusion_worker/app.py": "7D0965ECEDC9A2046DCFCE57EFA82C7AF2AE604C3E46AEA80D64B5DD4C99146F",
+    "src/echo_fusion_worker/config.py": "9583F5AC281D052A0F9D28DF8B79043279D990B6AC86744A856A9A6E7860AE7E",
+    "src/echo_fusion_worker/factory.py": "592B56D8CB465C5123216DA350F302C3B6501A27196AA10E1822D0692FC8B452",
+    "src/echo_fusion_worker/live_adapters.py": "BF7D279B9F164059306BAE6F072650C9E97AFEE8968BD826486301753960CC65",
+    "tests/test_invariants.py": "A7B896E64A830258A1E1EA54B9DA26AF87CB6D0207619EC89E2CD5895568D466",
+    "tests/test_live_adapters.py": "529A811471F05F4B59CC61708873439CCB8A842B2768F86B745B93B3AF42DAB6",
+    "tests/test_worker.py": "2DCA481471AAAE535E889AA329006E085937CE7E08C0842F54B9A99A4CD3B56A"
+  }
+}

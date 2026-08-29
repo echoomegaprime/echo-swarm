@@ -1,18 +1,49 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowUp, Square, X } from "lucide-react";
+import { ArrowUp, AudioLines, Blend, Mic, MicOff, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { MODE_META, MODELS, MODES, STARTERS, type ModelId } from "@/lib/swarm/catalog";
-import { sendSwarmTurn } from "@/lib/swarm/actions";
+import { getFusionResult, sendSwarmTurn, startFusionRun } from "@/lib/swarm/actions";
 import { consumeSwarmStream } from "@/lib/swarm/client-stream";
+import {
+  COLLABORATION_PURPOSES,
+  PURPOSE_META,
+  PURPOSE_MODES,
+  purposePrompt,
+  type CollaborationPurpose,
+} from "@/lib/swarm/purpose";
 import { isConnected, useSwarm } from "@/lib/swarm/store";
-import type { SwarmEvent, SwarmTurnInput } from "@/lib/swarm/types";
+import type { SwarmEvent, SwarmTurnInput, SwarmTurnResult } from "@/lib/swarm/types";
+import {
+  speakText,
+  startVoiceInput,
+  stopSpeaking,
+  voiceInputAvailable,
+  voiceOutputAvailable,
+} from "@/lib/swarm/voice";
 import { cn } from "@/lib/utils";
+
+const VISIBLE_PURPOSES: CollaborationPurpose[] = [
+  "brainstorm",
+  "review",
+  "validate",
+  "certify",
+  "build",
+  "debate",
+  "plan",
+  "report",
+];
 
 export function Composer() {
   const [draft, setDraft] = useState("");
+  const [purpose, setPurpose] = useState<CollaborationPurpose>("brainstorm");
+  const [fusionEnabled, setFusionEnabled] = useState(false);
+  const [fusionBusy, setFusionBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceReadback, setVoiceReadback] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const stopVoiceRef = useRef<(() => void) | null>(null);
   const mode = useSwarm((s) => s.mode);
   const setMode = useSwarm((s) => s.setMode);
   const host = useSwarm((s) => s.host);
@@ -22,7 +53,69 @@ export function Composer() {
   const thinking = useSwarm((s) => s.thinking);
   const quote = useSwarm((s) => s.quote);
   const session = useSwarm((s) => s.sessions.find((x) => x.id === s.activeId) ?? s.sessions[0]!);
-  const busy = thinking.length > 0;
+  const busy = thinking.length > 0 || fusionBusy;
+
+  async function fuseResult(
+    objective: string,
+    result: Extract<SwarmTurnResult, { ok: true }>,
+    runId: number,
+    signal: AbortSignal,
+  ) {
+    const store = useSwarm.getState();
+    setFusionBusy(true);
+    store.pushMessages([
+      {
+        id: crypto.randomUUID(),
+        role: "notice",
+        content: "Echo Fusion Worker is fusing the visible council output.",
+        createdAt: Date.now(),
+      },
+    ]);
+    const context = {
+      purpose,
+      mode: store.mode,
+      selected_models: result.turns.map((turn) => turn.modelId),
+      council_outputs: result.turns.slice(0, 8).map((turn) => ({
+        model: turn.modelId,
+        phase: turn.phase,
+        content: turn.content.slice(0, 1_000),
+        error: turn.error?.slice(0, 400),
+      })),
+    };
+    const started = await startFusionRun({
+      data: {
+        objective,
+        context,
+        budget: { max_calls: 120, max_cost_usd: 5, max_wall_s: 420 },
+        idempotency_key: `chat:${runId}`,
+      },
+    });
+    if (!started.ok || !started.run_id) {
+      throw new Error(started.error || "Echo Fusion Worker did not return a run ID.");
+    }
+    let polled = started;
+    const deadline = Date.now() + 600_000;
+    while (!polled.done && Date.now() < deadline) {
+      if (signal.aborted) return;
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 1_250));
+      if (signal.aborted) return;
+      polled = await getFusionResult({ data: { run_id: started.run_id } });
+      if (!polled.ok) throw new Error(polled.error || "Echo Fusion Worker polling failed.");
+    }
+    if (!polled.done) throw new Error("Echo Fusion Worker exceeded the 10-minute chat limit.");
+    store.pushMessages([
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        source: "fusion",
+        runId: started.run_id,
+        content: polled.text,
+        phase: "fusion",
+        createdAt: Date.now(),
+      },
+    ]);
+    if (voiceReadback) speakText(polled.text);
+  }
 
   async function submit(text: string) {
     const raw = text.trim();
@@ -35,9 +128,10 @@ export function Composer() {
     }
     const store = useSwarm.getState();
     const quoted = store.quote;
-    const prompt = quoted
+    const task = quoted
       ? `Reply to ${MODELS[quoted.modelId].name} who said:\n"""${quoted.content.slice(0, 600)}"""\n\n${raw}`
       : raw;
+    const prompt = purposePrompt(purpose, task);
     const seatList =
       quoted?.only && liveSeats.includes(quoted.modelId) ? [quoted.modelId] : liveSeats;
     store.titleFromPrompt(raw);
@@ -57,12 +151,12 @@ export function Composer() {
     store.clearStream();
 
     const history = session.messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
+      .filter((message) => message.role === "user" || message.role === "assistant")
       .slice(-16)
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-        modelId: m.modelId,
+      .map((message) => ({
+        role: message.role as "user" | "assistant",
+        content: message.content,
+        modelId: message.modelId,
       }));
 
     const input: SwarmTurnInput = {
@@ -79,83 +173,100 @@ export function Composer() {
 
     const committed = new Set<string>();
     const ctrl = new AbortController();
+    let completedResult: SwarmTurnResult | undefined;
     abortRef.current = ctrl;
 
-    const onEvent = (ev: SwarmEvent) => {
-      const s = useSwarm.getState();
-      if (s.runId !== runId) return;
-      if (ev.type === "phase") s.setThinking(ev.seats);
-      if (ev.type === "notice") {
-        s.pushMessages([
-          { id: crypto.randomUUID(), role: "notice", content: ev.content, createdAt: Date.now() },
-        ]);
-      }
-      if (ev.type === "delta") {
-        s.upsertStream({
-          messageId: ev.messageId,
-          modelId: ev.modelId,
-          phase: ev.phase,
-          content: ev.text,
-        });
-      }
-      if (ev.type === "turn") {
-        const id = ev.turn.messageId ?? crypto.randomUUID();
-        if (committed.has(id)) return;
-        committed.add(id);
-        s.dropStream(id);
-        s.pushMessages([
+    const onEvent = (event: SwarmEvent) => {
+      const state = useSwarm.getState();
+      if (state.runId !== runId) return;
+      if (event.type === "phase") state.setThinking(event.seats);
+      if (event.type === "notice") {
+        state.pushMessages([
           {
-            id,
-            role: "assistant",
-            modelId: ev.turn.modelId,
-            model: ev.turn.model,
-            content: ev.turn.error ? ev.turn.error : ev.turn.content,
-            traces: ev.turn.traces,
-            phase: ev.turn.phase,
-            usage: ev.turn.usage,
+            id: crypto.randomUUID(),
+            role: "notice",
+            content: event.content,
             createdAt: Date.now(),
           },
         ]);
-        if (ev.turn.usage) s.addUsage(ev.turn.modelId, ev.turn.usage);
       }
-      if (ev.type === "usage") s.addUsage(ev.modelId, { prompt: ev.prompt, completion: ev.completion });
-      if (ev.type === "insights") s.setInsights(ev.insights);
-      if (ev.type === "done") {
-        s.clearStream();
-        if (!ev.result.ok) {
-          toast(ev.result.error);
-          s.pushMessages([
-            { id: crypto.randomUUID(), role: "notice", content: ev.result.error, createdAt: Date.now() },
-          ]);
-          return;
-        }
-        s.setInsights(ev.result.insights);
-        for (const t of ev.result.turns) {
-          const id = t.messageId ?? `${t.modelId}-${t.phase ?? "x"}-${t.content.slice(0, 24)}`;
-          if (committed.has(id) || committed.has(t.messageId ?? "")) continue;
-          if (t.messageId) committed.add(t.messageId);
-          committed.add(id);
-          s.pushMessages([
-            {
-              id: crypto.randomUUID(),
-              role: "assistant",
-              modelId: t.modelId,
-              model: t.model,
-              content: t.error ? t.error : t.content,
-              traces: t.traces,
-              phase: t.phase,
-              usage: t.usage,
-              createdAt: Date.now(),
-            },
-          ]);
-          if (t.usage) s.addUsage(t.modelId, t.usage);
-        }
-        if (ev.result.skipped.length) {
-          s.pushMessages([
+      if (event.type === "delta") {
+        state.upsertStream({
+          messageId: event.messageId,
+          modelId: event.modelId,
+          phase: event.phase,
+          content: event.text,
+        });
+      }
+      if (event.type === "turn") {
+        const id = event.turn.messageId ?? crypto.randomUUID();
+        if (committed.has(id)) return;
+        committed.add(id);
+        state.dropStream(id);
+        state.pushMessages([
+          {
+            id,
+            role: "assistant",
+            source: "council",
+            modelId: event.turn.modelId,
+            model: event.turn.model,
+            content: event.turn.error ? event.turn.error : event.turn.content,
+            traces: event.turn.traces,
+            phase: event.turn.phase,
+            usage: event.turn.usage,
+            createdAt: Date.now(),
+          },
+        ]);
+        if (event.turn.usage) state.addUsage(event.turn.modelId, event.turn.usage);
+      }
+      if (event.type === "usage") {
+        state.addUsage(event.modelId, { prompt: event.prompt, completion: event.completion });
+      }
+      if (event.type === "insights") state.setInsights(event.insights);
+      if (event.type === "done") {
+        completedResult = event.result;
+        state.clearStream();
+        if (!event.result.ok) {
+          toast(event.result.error);
+          state.pushMessages([
             {
               id: crypto.randomUUID(),
               role: "notice",
-              content: ev.result.skipped.map((x) => x.reason).join(" "),
+              content: event.result.error,
+              createdAt: Date.now(),
+            },
+          ]);
+          return;
+        }
+        state.setInsights(event.result.insights);
+        for (const turn of event.result.turns) {
+          const id =
+            turn.messageId ?? `${turn.modelId}-${turn.phase ?? "x"}-${turn.content.slice(0, 24)}`;
+          if (committed.has(id) || committed.has(turn.messageId ?? "")) continue;
+          if (turn.messageId) committed.add(turn.messageId);
+          committed.add(id);
+          state.pushMessages([
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              source: "council",
+              modelId: turn.modelId,
+              model: turn.model,
+              content: turn.error ? turn.error : turn.content,
+              traces: turn.traces,
+              phase: turn.phase,
+              usage: turn.usage,
+              createdAt: Date.now(),
+            },
+          ]);
+          if (turn.usage) state.addUsage(turn.modelId, turn.usage);
+        }
+        if (event.result.skipped.length) {
+          state.pushMessages([
+            {
+              id: crypto.randomUUID(),
+              role: "notice",
+              content: event.result.skipped.map((item) => item.reason).join(" "),
               createdAt: Date.now(),
             },
           ]);
@@ -165,25 +276,32 @@ export function Composer() {
 
     try {
       await consumeSwarmStream(input, { signal: ctrl.signal, onEvent });
-    } catch (err) {
+      if (fusionEnabled && completedResult?.ok && !ctrl.signal.aborted) {
+        await fuseResult(raw, completedResult, runId, ctrl.signal);
+      }
+    } catch (error) {
       if (ctrl.signal.aborted || useSwarm.getState().runId !== runId) return;
-      try {
-        const result = await sendSwarmTurn({ data: input });
-        if (useSwarm.getState().runId !== runId) return;
-        if (!result.ok) {
-          toast(result.error);
-          store.pushMessages([
-            { id: crypto.randomUUID(), role: "notice", content: result.error, createdAt: Date.now() },
-          ]);
-        } else {
+      if (!completedResult) {
+        try {
+          const result = await sendSwarmTurn({ data: input });
+          if (useSwarm.getState().runId !== runId) return;
           onEvent({ type: "done", result });
+          if (fusionEnabled && result.ok && !ctrl.signal.aborted) {
+            await fuseResult(raw, result, runId, ctrl.signal);
+          }
+        } catch (fallbackError) {
+          toast(fallbackError instanceof Error ? fallbackError.message : "Turn failed.");
         }
-      } catch {
-        const msg = err instanceof Error ? err.message : "Turn failed.";
-        toast(msg);
+      } else {
+        const message = error instanceof Error ? error.message : "Fusion failed.";
+        toast(message);
+        store.pushMessages([
+          { id: crypto.randomUUID(), role: "notice", content: message, createdAt: Date.now() },
+        ]);
       }
     } finally {
       abortRef.current = null;
+      setFusionBusy(false);
       if (useSwarm.getState().runId === runId) {
         useSwarm.getState().setThinking([]);
         useSwarm.getState().clearStream();
@@ -191,50 +309,123 @@ export function Composer() {
     }
   }
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
     void submit(draft);
   }
 
-  function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+  function onKey(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
     if (window.matchMedia("(max-width: 767px)").matches) return;
-    e.preventDefault();
+    event.preventDefault();
     void submit(draft);
+  }
+
+  function toggleVoiceInput() {
+    if (listening) {
+      stopVoiceRef.current?.();
+      stopVoiceRef.current = null;
+      return;
+    }
+    if (!voiceInputAvailable()) {
+      toast("Voice input is not available in this browser.");
+      return;
+    }
+    stopVoiceRef.current =
+      startVoiceInput({
+        onText: (text) => setDraft((current) => `${current}${current ? " " : ""}${text}`),
+        onState: setListening,
+        onError: (message) => toast(`Voice input: ${message}`),
+      }) ?? null;
   }
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {!session.messages.length && !busy ? (
         <div className="mb-3 flex flex-col gap-2">
-          {STARTERS.map((s) => (
+          {STARTERS.map((starter) => (
             <button
-              key={s}
+              key={starter}
               type="button"
               className="rounded-lg bg-surface px-4 py-3 text-left text-sm text-muted shadow-[var(--shadow-border)] transition-colors duration-150 hover:text-fg"
-              onClick={() => setDraft(s)}
+              onClick={() => setDraft(starter)}
             >
-              {s}
+              {starter}
             </button>
           ))}
         </div>
       ) : null}
-      <div className="mb-2 flex gap-1 overflow-x-auto pb-1">
-        {MODES.map((m) => (
+      <div className="mb-2 flex gap-1 overflow-x-auto pb-1" aria-label="Swarm purpose">
+        {VISIBLE_PURPOSES.filter((item) => COLLABORATION_PURPOSES.includes(item)).map((item) => (
           <button
-            key={m}
+            key={item}
             type="button"
-            onClick={() => setMode(m)}
+            onClick={() => {
+              setPurpose(item);
+              setMode(PURPOSE_MODES[item]);
+            }}
             className={cn(
-              "h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-colors duration-150",
-              mode === m ? "bg-accent text-accent-fg" : "bg-surface text-muted hover:text-fg",
+              "h-9 shrink-0 rounded-full px-3 text-xs font-medium transition-colors duration-150",
+              purpose === item ? "bg-fg text-bg" : "bg-raised text-muted hover:text-fg",
             )}
           >
-            {MODE_META[m].label}
+            {PURPOSE_META[item].label}
           </button>
         ))}
       </div>
-      <p className="mb-2 text-xs text-subtle">{MODE_META[mode].hint}</p>
+      <div className="mb-2 flex gap-1 overflow-x-auto pb-1" aria-label="Swarm mode">
+        {MODES.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setMode(item)}
+            className={cn(
+              "h-9 shrink-0 rounded-full px-3 text-xs font-medium transition-colors duration-150",
+              mode === item ? "bg-accent text-accent-fg" : "bg-surface text-muted hover:text-fg",
+            )}
+          >
+            {MODE_META[item].label}
+          </button>
+        ))}
+      </div>
+      <p className="mb-2 text-xs text-subtle">
+        {PURPOSE_META[purpose].instruction} {MODE_META[mode].hint}
+      </p>
+      <div className="mb-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-pressed={fusionEnabled}
+          onClick={() => setFusionEnabled((enabled) => !enabled)}
+          className={cn(
+            "flex h-9 items-center gap-2 rounded-full px-3 text-xs font-medium",
+            fusionEnabled ? "bg-accent text-accent-fg" : "bg-surface text-muted",
+          )}
+        >
+          <Blend className="size-3.5" />
+          Fusion {fusionEnabled ? "on" : "off"}
+        </button>
+        <button
+          type="button"
+          aria-pressed={voiceReadback}
+          onClick={() => {
+            if (!voiceOutputAvailable()) {
+              toast("Voice readback is not available in this browser.");
+              return;
+            }
+            setVoiceReadback((enabled) => {
+              if (enabled) stopSpeaking();
+              return !enabled;
+            });
+          }}
+          className={cn(
+            "flex h-9 items-center gap-2 rounded-full px-3 text-xs font-medium",
+            voiceReadback ? "bg-accent text-accent-fg" : "bg-surface text-muted",
+          )}
+        >
+          <AudioLines className="size-3.5" />
+          Read fused output {voiceReadback ? "on" : "off"}
+        </button>
+      </div>
       {quote ? (
         <div className="mb-2 flex items-start gap-2 rounded-lg bg-raised px-3 py-2">
           <div className="min-w-0 flex-1">
@@ -243,8 +434,8 @@ export function Composer() {
             <label className="mt-1 flex items-center gap-2 text-xs text-muted">
               <Switch
                 checked={quote.only}
-                onCheckedChange={(v) =>
-                  useSwarm.getState().setQuote({ ...quote, only: Boolean(v) })
+                onCheckedChange={(value) =>
+                  useSwarm.getState().setQuote({ ...quote, only: Boolean(value) })
                 }
               />
               This seat only
@@ -261,17 +452,14 @@ export function Composer() {
           </Button>
         </div>
       ) : null}
-      <form
-        onSubmit={onSubmit}
-        className="rounded-xl bg-surface p-2 shadow-[var(--shadow-border)]"
-      >
+      <form onSubmit={onSubmit} className="rounded-xl bg-surface p-2 shadow-[var(--shadow-border)]">
         <label className="sr-only" htmlFor="swarm-brief">
           Brief
         </label>
         <textarea
           id="swarm-brief"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKey}
           placeholder={`Brief the table. Host is ${MODELS[host].name}.`}
           rows={3}
@@ -282,32 +470,48 @@ export function Composer() {
         <div className="flex items-center justify-between gap-2 px-1 pb-1">
           <p className="text-xs text-subtle tabular-nums">
             {seats.filter((id: ModelId) => isConnected(id, keys, live)).length} live
+            {fusionBusy ? " · Fusion running" : ""}
           </p>
-          {busy ? (
+          <div className="flex items-center gap-1">
             <Button
               type="button"
               size="icon"
-              variant="outline"
-              aria-label="Stop"
+              variant={listening ? "default" : "ghost"}
+              aria-label={listening ? "Stop voice input" : "Start voice input"}
               className="rounded-full"
-              onClick={() => {
-                abortRef.current?.abort();
-                useSwarm.getState().abortRun();
-              }}
+              onClick={toggleVoiceInput}
             >
-              <Square className="size-3.5 fill-current" />
+              {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
             </Button>
-          ) : (
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!draft.trim()}
-              aria-label="Send brief"
-              className="rounded-full"
-            >
-              <ArrowUp className="size-4" />
-            </Button>
-          )}
+            {busy ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="Stop"
+                className="rounded-full"
+                onClick={() => {
+                  abortRef.current?.abort();
+                  stopVoiceRef.current?.();
+                  stopVoiceRef.current = null;
+                  stopSpeaking();
+                  useSwarm.getState().abortRun();
+                }}
+              >
+                <Square className="size-3.5 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!draft.trim()}
+                aria-label="Send brief"
+                className="rounded-full"
+              >
+                <ArrowUp className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </form>
     </div>

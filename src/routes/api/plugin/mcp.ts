@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MODEL_IDS } from "@/lib/swarm/catalog";
 import { pingNodes, runSwarm } from "@/lib/swarm/engine.server";
 import { authorizePluginRequest } from "@/lib/swarm/mcp-auth";
+import { BRAIN_MCP_TOOLS, handleBrainTool, isBrainToolName } from "@/lib/swarm/mcp-brain.server";
 import { createCollaborationPlan, formatCollaborationResult } from "@/lib/swarm/mcp-collaboration";
 import {
   handleMaximalistTool,
@@ -14,7 +15,7 @@ const tools = [
   {
     name: "swarm_convene",
     description:
-      "Bring other models into this chat for brainstorming, debate, build assistance, review, planning, or a consolidated report. Runs the selected live models and returns chat-ready Markdown plus structured results; it does not apply generated files.",
+      "Bring other models into this chat for brainstorming, debate, build assistance, review, evidence validation, advisory certification review, planning, or a consolidated report. Runs the selected live models and returns chat-ready Markdown plus structured results; it does not apply generated files.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -27,7 +28,16 @@ const tools = [
         },
         purpose: {
           type: "string",
-          enum: ["brainstorm", "debate", "build", "review", "plan", "report"],
+          enum: [
+            "brainstorm",
+            "debate",
+            "build",
+            "review",
+            "validate",
+            "certify",
+            "plan",
+            "report",
+          ],
           description:
             "Maps to parallel, debate, Build Heavy, roundtable, or conductor mode. Defaults to brainstorm.",
         },
@@ -48,7 +58,16 @@ const tools = [
         ok: { type: "boolean" },
         purpose: {
           type: "string",
-          enum: ["brainstorm", "debate", "build", "review", "plan", "report"],
+          enum: [
+            "brainstorm",
+            "debate",
+            "build",
+            "review",
+            "validate",
+            "certify",
+            "plan",
+            "report",
+          ],
         },
         mode: {
           type: "string",
@@ -92,6 +111,7 @@ const tools = [
     description: "Ping live labs and local FORGE/TEMPER nodes.",
     inputSchema: { type: "object", properties: {} },
   },
+  ...BRAIN_MCP_TOOLS,
   ...MAXIMALIST_MCP_TOOLS,
 ];
 
@@ -122,7 +142,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
           {
             protocol: "mcp",
             name: "echo-swarm",
-            version: "1.2.0",
+            version: "1.3.0",
             transport: "streamable-http",
             agent: auth.agent,
             tools,
@@ -168,9 +188,9 @@ export const Route = createFileRoute("/api/plugin/mcp")({
               result: {
                 protocolVersion: "2025-03-26",
                 capabilities: { tools: {} },
-                serverInfo: { name: "echo-swarm", version: "1.2.0" },
+                serverInfo: { name: "echo-swarm", version: "1.3.0" },
                 instructions:
-                  "Multi-LLM council plus the asynchronous MAXIMALIST_RECONSTRUCTED Fusion Brain. Call swarm_ping for council seats, swarm_convene for chat-ready collaboration, or swarm_maximalist_health then swarm_maximalist_start and swarm_maximalist_result for deep fusion runs.",
+                  "Interactive multi-LLM council, recovered sovereign Echo Swarm Brain, and asynchronous MAXIMALIST_RECONSTRUCTED Fusion Worker. Call swarm_convene for brainstorm/review/validate/certify collaboration; swarm_brain_* for recovered Trinity and hybrid routes; or swarm_maximalist_health, swarm_maximalist_start, and swarm_maximalist_result for deep fused output.",
               },
             },
             { headers: cors },
@@ -260,6 +280,10 @@ export const Route = createFileRoute("/api/plugin/mcp")({
               },
               { headers: cors },
             );
+          }
+          if (isBrainToolName(name)) {
+            const result = await handleBrainTool(name, args);
+            return Response.json({ jsonrpc: "2.0", id, result }, { headers: cors });
           }
           if (isMaximalistToolName(name)) {
             const result = await handleMaximalistTool(name, args);

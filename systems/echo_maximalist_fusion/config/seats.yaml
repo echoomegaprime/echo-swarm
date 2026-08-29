@@ -1,0 +1,43 @@
+# echo-fusion-worker seats — CONFIG, not code.
+#
+# `provider` MUST be a backend FAMILY (openai|anthropic|google|local|xai), never a
+# model string. 60 lanes are not 60 independents; if provider is wrong the arbitration
+# agreement-bonus rewards correlated (clone) answers — the clone-swarm failure the
+# scorer exists to prevent. The loader (config.py) rejects any other provider value.
+#
+# tier-1 = cheap OAuth/local lanes that stream first; tier-2 = elite lanes recruited
+# only on escalation. This is the shape #34391's `live` profile binds to real swarm
+# lanes; the shipped `stub` profile ignores the model strings and answers
+# deterministically, but the provider families are still validated here.
+
+profile_default: stub
+reserve_specialists: 4
+
+seats:
+  # ---- tier-1: cheap, diverse providers (independent-agreement counts by provider) ----
+  - {id: t1_llama,   model: llama-3.1-8b,  provider: local,     role: reasoner,   tier: 1}
+  - {id: t1_qwen,    model: qwen2.5-7b,    provider: local,     role: researcher, tier: 1}
+  - {id: t1_haiku,   model: haiku,         provider: anthropic, role: reasoner,   tier: 1}
+  - {id: t1_gpt4omini, model: gpt-4o-mini, provider: openai,    role: critic,     tier: 1}
+  - {id: t1_flash,   model: gemini-flash,  provider: google,    role: researcher, tier: 1}
+  - {id: t1_grokfast, model: grok-fast,    provider: xai,       role: reasoner,   tier: 1}
+  # ---- tier-2: elite, recruited on escalation only ----
+  - {id: t2_opus,    model: opus,          provider: anthropic, role: reasoner,   tier: 2}
+  - {id: t2_gpt41,   model: gpt-4.1,       provider: openai,    role: reasoner,   tier: 2}
+  - {id: t2_geminipro, model: gemini-pro,  provider: google,    role: critic,     tier: 2}
+  - {id: t2_grokreason, model: grok-reasoning, provider: xai,   role: reasoner,   tier: 2}
+
+# Trinity — exactly 3 {name, model, role} members (the loader enforces count == 3);
+# provider is optional but validated, kept here so the three sit on distinct backends.
+trinity:
+  - {name: THORNE, model: opus,       provider: anthropic, role: integrator}
+  - {name: NYX,    model: gpt-4.1,    provider: openai,    role: reasoner}
+  - {name: SAGE,   model: gemini-pro, provider: google,    role: expander}
+
+# Planner — one cheap JSON-reliable lane, never a frontier model.
+planner_seat: {id: planner, model: gpt-4o-mini, provider: openai, role: planner}
+
+# Verifiers — providers disjoint from the seats they check.
+verifier_seats:
+  - {id: v_grok,  model: grok-reasoning, provider: xai,   role: verifier}
+  - {id: v_local, model: qwen2.5-7b,     provider: local, role: verifier}

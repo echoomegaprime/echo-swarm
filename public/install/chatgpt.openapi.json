@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Echo Swarm",
-    "version": "1.0.0",
-    "description": "Multi-lab LLM council MCP/OpenAPI. Surface identity via x-echo-agent. Lab secrets never stored in this schema."
+    "version": "1.3.0",
+    "description": "Interactive multi-lab LLM council plus recovered Echo Swarm Brain and Maximalist Fusion MCP tools. Surface identity via x-echo-agent. Lab secrets never stored in this schema."
   },
   "servers": [
     {
@@ -28,7 +28,7 @@
       },
       "post": {
         "operationId": "swarmMcpCall",
-        "summary": "JSON-RPC initialize, tools/list, tools/call (swarm_ping / swarm_brief)",
+        "summary": "JSON-RPC initialize, tools/list, tools/call (council, recovered brain, and Maximalist Fusion)",
         "parameters": [
           {
             "name": "x-echo-agent",

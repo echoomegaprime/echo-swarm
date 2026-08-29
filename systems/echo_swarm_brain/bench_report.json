@@ -1,0 +1,153 @@
+{
+  "service": "echo-swarm-brain",
+  "version": "3.2.0-perf",
+  "ts": "2026-07-29T00:20:40Z",
+  "benches": {
+    "weighted_consensus_on2_to_hist": {
+      "before_mean_ms": 59.52636461976605,
+      "after_mean_ms": 0.4773289159250756,
+      "speedup": 124.707,
+      "before": {
+        "mean": 59.52636461976605,
+        "median": 59.22307353466749,
+        "p95": 61.93158705718815,
+        "stdev": 0.9774266307380777
+      },
+      "after": {
+        "mean": 0.4773289159250756,
+        "median": 0.4766659694723785,
+        "p95": 0.48436003271490335,
+        "stdev": 0.004296249453264231
+      },
+      "n_voices": 1200,
+      "slow_result": 2.3,
+      "fast_result": 2.3
+    },
+    "parse_grade_precompiled": {
+      "before_mean_ms": 17.297833983320743,
+      "after_mean_ms": 10.415363329229876,
+      "speedup": 1.661,
+      "before": {
+        "mean": 17.297833983320743,
+        "median": 17.194483953062445,
+        "p95": 18.273368012160063,
+        "stdev": 0.31349719950046406
+      },
+      "after": {
+        "mean": 10.415363329229876,
+        "median": 10.38372254697606,
+        "p95": 10.891224024817348,
+        "stdev": 0.1576288566372207
+      },
+      "n_texts": 12000
+    },
+    "debate_transcript_join": {
+      "before_mean_ms": 4.761529207462445,
+      "after_mean_ms": 0.07839730242267251,
+      "speedup": 60.736,
+      "before": {
+        "mean": 4.761529207462445,
+        "median": 4.70795197179541,
+        "p95": 5.130860023200512,
+        "stdev": 0.1481300467106359
+      },
+      "after": {
+        "mean": 0.07839730242267251,
+        "median": 0.07829995593056083,
+        "p95": 0.08097104728221893,
+        "stdev": 0.0007605150034051744
+      },
+      "n_rounds": 400,
+      "chars": 254691
+    },
+    "health_ttl_cache": {
+      "before_mean_ms": 2.351549752347637,
+      "after_mean_ms": 0.1530116205685772,
+      "speedup": 15.368,
+      "before": {
+        "mean": 2.351549752347637,
+        "median": 2.348185982555151,
+        "p95": 2.410145942121744,
+        "stdev": 0.02434749484185156
+      },
+      "after": {
+        "mean": 0.1530116205685772,
+        "median": 0.15261850785464048,
+        "p95": 0.15689001884311438,
+        "stdev": 0.0015295078821287468
+      },
+      "n_reads": 400
+    },
+    "llm_probe_ttl": {
+      "before_mean_ms": 2.261987145175226,
+      "after_mean_ms": 0.13466480595525354,
+      "speedup": 16.797,
+      "before": {
+        "mean": 2.261987145175226,
+        "median": 2.2591015440411866,
+        "p95": 2.3037020582705736,
+        "stdev": 0.02427850636165474
+      },
+      "after": {
+        "mean": 0.13466480595525354,
+        "median": 0.1340339658781886,
+        "p95": 0.13753201346844435,
+        "stdev": 0.0015099930741347717
+      },
+      "n_probes": 500
+    },
+    "connection_pool_reuse": {
+      "before_mean_ms": 1.6414019378966518,
+      "after_mean_ms": 0.018519565596112182,
+      "speedup": 88.631,
+      "before": {
+        "mean": 1.6414019378966518,
+        "median": 1.643686497118324,
+        "p95": 1.6618750523775816,
+        "stdev": 0.012592632417538142
+      },
+      "after": {
+        "mean": 0.018519565596112182,
+        "median": 0.01848896499723196,
+        "p95": 0.019661965779960155,
+        "stdev": 0.00038275516070541846
+      },
+      "n": 500,
+      "connects": 1,
+      "reuses": 499
+    }
+  },
+  "gates": {
+    "weighted_consensus_on2_to_hist": {
+      "min_speedup": 3.0,
+      "observed": 124.707,
+      "ok": true
+    },
+    "parse_grade_precompiled": {
+      "min_speedup": 1.5,
+      "observed": 1.661,
+      "ok": true
+    },
+    "debate_transcript_join": {
+      "min_speedup": 1.5,
+      "observed": 60.736,
+      "ok": true
+    },
+    "health_ttl_cache": {
+      "min_speedup": 3.0,
+      "observed": 15.368,
+      "ok": true
+    },
+    "llm_probe_ttl": {
+      "min_speedup": 3.0,
+      "observed": 16.797,
+      "ok": true
+    },
+    "connection_pool_reuse": {
+      "min_speedup": 2.0,
+      "observed": 88.631,
+      "ok": true
+    }
+  },
+  "ok": true
+}

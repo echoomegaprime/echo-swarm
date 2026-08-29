@@ -163,9 +163,9 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert(startCall, "the plugin must call the fixed Fusion worker /run endpoint");
   assert.equal(startCall.body.objective, "Reconcile the architecture evidence");
   assert.deepEqual(startCall.body.context, { source: "acceptance-test" });
-  assert.equal(startCall.body.budget.max_calls, 200);
+  assert.equal(startCall.body.budget.max_calls, 120);
   assert.equal(startCall.body.budget.max_cost_usd, 5);
-  assert.equal(startCall.body.budget.max_wall_s, 600);
+  assert.equal(startCall.body.budget.max_wall_s, 420);
   assert.equal(startCall.body.worker_url, undefined, "callers cannot override the worker origin");
 
   const completed = await rpc(4, "swarm_maximalist_result", { run_id: "run_acceptance" });

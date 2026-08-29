@@ -1,0 +1,59 @@
+{
+  "source_host": "HAMMER",
+  "source_path": "C:\\wt-pay\\systems\\echo_swarm_brain",
+  "retrieved_by_host": "QUENCH",
+  "retrieved_at_utc": "2026-08-29T14:03:44.3224102Z",
+  "verification": "Before repository sanitization, SHA-256 matched the canonical echo-omnipresence-runtime/SYSTEMS/echo_swarm_brain copy for every recovered file",
+  "repository_transformations": {
+    "reason": "Independent PR review required removal of embedded operational identifiers and credentials, loopback-only service binding, fail-closed Cloudflare responses, and unpredictable smoke-test temporary files. Source hashes remain recorded under files; quench_sha256 binds the sanitized repository bytes.",
+    "files": {
+      "app.py": {
+        "quench_sha256": "8c43377966199aa984dd5a1190c0405692a878b41f4d9d466bb34d0b1e5e94ba",
+        "changes": "replaced private model-health fallback and public-bind run guidance with loopback defaults"
+      },
+      "fix_tunnel_order.py": {
+        "quench_sha256": "840f18f5b745813fd3cce64472aa9c2e9e60b21907f1e3edf5ddd29890627795",
+        "changes": "replaced account, tunnel, email, hostname, wildcard, and service identifiers with fail-closed environment configuration"
+      },
+      "llm.py": {
+        "quench_sha256": "0215ad135264f57f4dcbcd6e8aaee6f1f30e188dad5cf9a56f1e45d756ed7cc2",
+        "changes": "replaced a private LAN model endpoint default with loopback while preserving environment override"
+      },
+      "echo-swarm-brain.service": {
+        "quench_sha256": "a57ebc4aa41d9dda1a40ac413615653a959d547dad9eb51df0096921bd08ee75",
+        "changes": "removed embedded database password, moved secrets to EnvironmentFile, replaced fleet IP default, and bound uvicorn to loopback"
+      },
+      "register_dns.py": {
+        "quench_sha256": "457bf4d1b0743087a48e32591d7dc64d726c137e6312e0568898c232a5fa4dbe",
+        "changes": "replaced email, zone, record, and tunnel identifiers with fail-closed environment configuration and require Cloudflare success:true responses"
+      },
+      "register_tunnel_route.py": {
+        "quench_sha256": "03c5345f895643b2852b9e2713a866b9cb364033c4f18d39f362d798f8877dd9",
+        "changes": "replaced account, tunnel, email, hostname, wildcard, and service identifiers with fail-closed environment configuration"
+      },
+      "tests/test_hotpath.py": {
+        "quench_sha256": "1ddf2c2ecccb46dd1a5a4b8739518d2bfb9f159d12e9cdd36acf5ff38f1327ef",
+        "changes": "replaced a duplicate-tuple no-op assertion with an exact final-grade contract assertion"
+      },
+      "verify_perf_pass.sh": {
+        "quench_sha256": "be3a196f4ea138aed06ab422b1b6d4f4b19cce28d77790e58c7acc39d70b2e51",
+        "changes": "replaced a predictable fixed health-response path with mktemp, environment-passed readback, and cleanup"
+      }
+    }
+  },
+  "files": {
+    "app.py": "d002ca3b98c5b43a08d9fc9e529d535ffc0e2288dff20f7b53275971a7474985",
+    "bench_hotpath.py": "91ac5dfb3e54ad7e7f9bdd4154d630cf76bce26b2b4b3951500cb0aae5521893",
+    "bench_report.json": "816ae0c71025199410176d72fd4c3f25643aa8343ec455ba235ffdb8ef161526",
+    "echo-swarm-brain.service": "781d79ead3b75b063304897ada4a6e7c5ccb4c3030f6615bfeda7e683c09c66c",
+    "fix_tunnel_order.py": "ccb899537e20b74b25c76f09b333fb874777b3169de7737fa7bc651e404a068b",
+    "hotpath.py": "09a5eb849f24dcf1c1c612ceddafdbcc0fc386d9f3d5568c94f1a6f36fd96232",
+    "llm.py": "c81f48186488b393436792b0a295c1d05fa6c49386e528fd9aa97427ab9165d1",
+    "register_dns.py": "add2d2fa578cef13b4619c2fff95cd4d6cdafe0b73dde29aa3565155c0dc4d95",
+    "register_tunnel_route.py": "78e2491603f700bfe7859f0fc8d79e5fcecbb3b98849a982b28740805a40bb40",
+    "smoke_test.py": "7fe147b22024afa3b3238a69ef6099a92ed30bf60f62635609de74754240f0dd",
+    "tests/test_hotpath.py": "4755b50668f130afc6e90b2c383e790cc8c5f8ec8cddcf3080d2cb2e3a2e6761",
+    "tests/test_smoke.py": "b57704f107a3d6d7b601fa3e67f84f1557fd4f8d061651e16ea4ee4881e39be5",
+    "verify_perf_pass.sh": "1f2f1f711e11aa52fc1b0e3a24372b8b4afc9cd373d0991544f262a8d98b7784"
+  }
+}

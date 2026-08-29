@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Reply } from "lucide-react";
+import { Check, Copy, Reply, Volume2, VolumeX } from "lucide-react";
 import { MODELS, variantLabel } from "@/lib/swarm/catalog";
 import type { SwarmMessage } from "@/lib/swarm/types";
 import { useSwarm } from "@/lib/swarm/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { onSpeechStopped, speakText, stopSpeaking } from "@/lib/swarm/voice";
 
 export function Thread() {
   const session = useSwarm((s) => s.sessions.find((x) => x.id === s.activeId) ?? s.sessions[0]!);
@@ -54,12 +55,9 @@ export function Thread() {
       {thinking.length && !streaming.length ? (
         <div className="flex flex-wrap gap-2">
           {thinking.map((id) => (
-            <div
-              key={id}
-              className="rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]"
-            >
+            <div key={id} className="rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]">
               <p className="text-xs text-subtle">{MODELS[id].name}</p>
-              <p className="shimmer-text font-serif text-sm">Speaking</p>
+              <p className="shimmer-text font-serif text-sm">Thinking</p>
             </div>
           ))}
         </div>
@@ -78,20 +76,33 @@ function MessageCard({ message }: { message: SwarmMessage }) {
     );
   }
   if (message.role === "notice") {
-    return (
-      <p className="text-center text-xs text-subtle">{message.content}</p>
-    );
+    return <p className="text-center text-xs text-subtle">{message.content}</p>;
   }
   const def = message.modelId ? MODELS[message.modelId] : null;
+  const fusion = message.source === "fusion";
+  const brain = message.source === "brain";
+  const displayName = fusion
+    ? "Echo Fusion Worker"
+    : brain
+      ? "Echo Swarm Brain"
+      : (def?.name ?? "Seat");
+  const monogram = fusion ? "F" : brain ? "B" : (def?.monogram ?? "?");
+  const sublabel = fusion
+    ? `MAXIMALIST_RECONSTRUCTED${message.runId ? ` · ${message.runId}` : ""}`
+    : brain
+      ? "Recovered sovereign brain"
+      : message.modelId
+        ? variantLabel(message.modelId, message.model)
+        : def?.lab;
   return (
     <article className="w-[min(100%,40rem)] rounded-xl rounded-bl-sm bg-surface px-4 py-3 shadow-[var(--shadow-border)]">
       <header className="mb-2 flex items-center gap-2">
         <span className="flex size-7 items-center justify-center rounded-full bg-raised font-serif text-sm">
-          {def?.monogram ?? "?"}
+          {monogram}
         </span>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium">
-            {def?.name ?? "Seat"}
+            {displayName}
             {message.phase ? (
               <span className="text-[10px] font-medium tracking-[0.14em] text-subtle uppercase">
                 {message.phase}
@@ -99,12 +110,8 @@ function MessageCard({ message }: { message: SwarmMessage }) {
             ) : null}
           </p>
           <p className="text-xs text-subtle">
-            {message.modelId
-              ? variantLabel(message.modelId, message.model)
-              : def?.lab}
-            {message.usage
-              ? ` · ${message.usage.prompt + message.usage.completion} tok`
-              : ""}
+            {sublabel}
+            {message.usage ? ` · ${message.usage.prompt + message.usage.completion} tok` : ""}
           </p>
         </div>
         {message.modelId ? (
@@ -126,6 +133,7 @@ function MessageCard({ message }: { message: SwarmMessage }) {
             <Reply className="size-3.5" />
           </Button>
         ) : null}
+        <SpeakBtn text={message.content} />
         <CopyBtn text={message.content} label="Copy reply" />
       </header>
       <MessageBody text={message.content} />
@@ -141,6 +149,33 @@ function MessageCard({ message }: { message: SwarmMessage }) {
         </ul>
       ) : null}
     </article>
+  );
+}
+
+function SpeakBtn({ text }: { text: string }) {
+  const [speaking, setSpeaking] = useState(false);
+  useEffect(() => onSpeechStopped(() => setSpeaking(false)), []);
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={speaking ? "Stop reading reply" : "Read reply aloud"}
+      className="shrink-0"
+      onClick={() => {
+        if (speaking) {
+          stopSpeaking();
+          return;
+        }
+        const started = speakText(text, {
+          onEnd: () => setSpeaking(false),
+          onError: () => setSpeaking(false),
+        });
+        setSpeaking(started);
+      }}
+    >
+      {speaking ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+    </Button>
   );
 }
 
@@ -261,14 +296,12 @@ export function EmptyHero() {
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center px-4 pt-6 pb-2 text-center md:pt-10">
       <p className="mb-3 text-xs font-medium tracking-[0.18em] text-subtle uppercase">
-        Multi-LLM council
+        Interactive multi-LLM council
       </p>
-      <h1 className="font-serif text-5xl leading-none tracking-tight text-fg md:text-6xl">
-        Swarm
-      </h1>
+      <h1 className="font-serif text-5xl leading-none tracking-tight text-fg md:text-6xl">Swarm</h1>
       <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-        Cloud OAuth, GitHub CLI, speed labs, OpenRouter, FORGE, TEMPER. Paid
-        subs first. Build Heavy runs the Grok-Build pipeline on the whole table.
+        Pull GPT, Claude, Gemini, Grok, free and local models into one visible chat. Brainstorm,
+        review, validate, run Maximalist Fusion, and speak or hear the result.
       </p>
     </div>
   );

@@ -1,8 +1,8 @@
 {
   "name": "echo-swarm",
   "title": "Echo Swarm",
-  "version": "1.0.0",
-  "description": "Multi-LLM council. Brief Grok, GPT, Claude, Gemini, DeepSeek, FORGE, TEMPER together.",
+  "version": "1.3.0",
+  "description": "Interactive multi-LLM council with recovered Swarm Brain, Maximalist Fusion output, review, validation, and advisory certification.",
   "icon": "/__grok/icon-180.png",
   "mcp": {
     "type": "http",
@@ -11,5 +11,5 @@
       "x-echo-agent": "grok"
     }
   },
-  "instructions": "Call swarm_ping then swarm_brief. Pass lab keys via x-*-key headers when available."
+  "instructions": "Call swarm_ping then swarm_convene for visible model collaboration. Call swarm_brain_* for recovered sovereign routes and swarm_maximalist_* for fused output. Prefer OAuth seats where available; pass lab keys only when required."
 }

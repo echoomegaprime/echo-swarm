@@ -1,4 +1,4 @@
-# Install Echo Swarm on Grok, GPT, Claude, Codex, Gemini
+# Install Echo Swarm Brain + Fusion on Grok, GPT, Claude, Codex, Gemini
 
 Repo: [echoomegaprime/echo-swarm](https://github.com/echoomegaprime/echo-swarm)
 
@@ -6,16 +6,16 @@ Canonical public origin (Cloudflare tunnel → FORGE `:8365`):
 
 **`https://swarm-app.echo-op.com`**
 
-Note: `swarm.echo-op.com` is the separate swarm-*monitor* product. `echo-swarm.echo-op.com` / `council.echo-op.com` are owned by other remote-tunnel ingresses — do not point clients at them for this council MCP.
+Note: `swarm.echo-op.com` is the separate swarm-_monitor_ product. `echo-swarm.echo-op.com` / `council.echo-op.com` are owned by other remote-tunnel ingresses — do not point clients at them for this council MCP.
 
 Icon (Grok requirement): [`public/__grok/icon-180.png`](../public/__grok/icon-180.png) — 180×180 PNG.
 
 Auth on plugin/MCP routes:
 
-| Header | Required | Values |
-| --- | --- | --- |
-| `x-echo-agent` | **yes** | `grok` \| `chatgpt` \| `claude` \| `codex` \| `gemini` \| `echo` |
-| `Authorization: Bearer …` | when host has `SWARM_MCP_TOKEN` | same token as server env |
+| Header                          | Required                        | Values                                                           |
+| ------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| `x-echo-agent`                  | **yes**                         | `grok` \| `chatgpt` \| `claude` \| `codex` \| `gemini` \| `echo` |
+| `Authorization: Bearer <token>` | when host has `SWARM_MCP_TOKEN` | same token as server env                                         |
 
 Lab keys for briefs stay on the request (`x-grok-key`, `x-openai-key`, …) or in the JSON body — never commit them.
 
@@ -41,7 +41,7 @@ npm install
 - Icon: `https://swarm-app.echo-op.com/__grok/icon-180.png`
 - Copy [public/install/grok.json](../public/install/grok.json)
 
-Probe: `swarm_ping` then `swarm_brief`.
+Probe: `swarm_ping`, `swarm_convene`, and `swarm_maximalist_health`. After the recovered brain service is routed beside the app, also probe `swarm_brain_health`.
 
 **Manual step if Grok custom-connector UI needs browser automation:** paste the URL + header + icon in the Grok connector dialog (no CLI equivalent on FORGE).
 
@@ -93,7 +93,7 @@ Edit `claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. Tools: **swarm_ping**, **swarm_brief**.
+Restart Claude Desktop. Tools include **swarm_ping**, **swarm_convene**, **swarm_brain_**_, and \**swarm_maximalist_**_.
 
 Copy-ready file: [public/install/claude_desktop.json](../public/install/claude_desktop.json).
 
@@ -166,6 +166,22 @@ gemini mcp list
 ## 6. Echo Desktop (echoomegaprime.com / echo.echo-op.com)
 
 Marketplace signed-manifest install is tracked separately (`echoomegaprime-com-marketplace-plugin-signing`). Until that signing blocker lands, register Swarm as a remote MCP/OpenAPI plugin using `/api/plugin.json` + `/api/plugin/mcp` with `x-echo-agent: echo`.
+
+## Authentication and provider seats
+
+Echo Swarm prefers already-authorized user subscriptions where the provider exposes a usable OAuth/CLI credential:
+
+| Seat                    | Preferred authentication                                                              | Fallback                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| GPT / Codex             | Codex or ChatGPT OAuth from the local Codex login                                     | OpenAI API key                                                                               |
+| Claude                  | Claude Code OAuth/setup token                                                         | Anthropic API key                                                                            |
+| Grok                    | xAI OAuth token when available                                                        | xAI API key                                                                                  |
+| DeepSeek                | DeepSeek OAuth token when available                                                   | DeepSeek API key                                                                             |
+| GitHub Models / Copilot | `gh auth token` or GitHub device OAuth                                                | GitHub token                                                                                 |
+| Gemini                  | Google AI Studio key in the current runtime                                           | Gemini CLI MCP registration controls the plugin connection, not the provider seat credential |
+| Free / local            | Provider free tiers where enabled; FORGE and TEMPER local OpenAI-compatible endpoints | API keys for the selected router/speed lab                                                   |
+
+Provider credentials are never committed. The app does not claim OAuth for a provider whose current API path only supports a key.
 
 ## Smoke check
 

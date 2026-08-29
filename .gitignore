@@ -1,11 +1,15 @@
 node_modules
 node_modules/
+.venv-brain/
+__pycache__/
+*.py[cod]
 dist/
 .output/
 .vinxi/
 .tanstack/
 .vercel/
-.grok/
+.grok/*
+!.grok/app-env.json
 .env
 .env.*
 !.env.example
@@ -18,6 +22,6 @@ swarm-out/
 .node_modules.lock
 # Keep Grok icon + install CSS in git; ignore generated PWA chrome if any
 public/__grok/install/assets/
-AGENTS.md
+!AGENTS.md
 AGENTS.project.md
 _grok_build_prompt.txt
