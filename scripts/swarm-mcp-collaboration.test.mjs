@@ -100,6 +100,8 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
     debate: "debate",
     build: "buildheavy",
     review: "roundtable",
+    validate: "roundtable",
+    certify: "conductor",
     plan: "conductor",
     report: "conductor",
   };
@@ -132,6 +134,8 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
   const expectedModes = {
     brainstorm: "parallel",
     build: "buildheavy",
+    validate: "roundtable",
+    certify: "conductor",
     report: "conductor",
   };
   let id = 10;

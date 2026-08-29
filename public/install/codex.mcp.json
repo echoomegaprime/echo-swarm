@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "echo-swarm": {
+      "type": "http",
+      "url": "https://swarm-app.echo-op.com/api/plugin/mcp",
+      "headers": {
+        "x-echo-agent": "codex"
+      }
+    }
+  }
+}

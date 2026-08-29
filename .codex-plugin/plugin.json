@@ -1,0 +1,30 @@
+{
+  "name": "echo-swarm",
+  "version": "1.3.0",
+  "description": "Interactive multi-LLM council with Echo Swarm Brain, Maximalist Fusion, review, validation, certification review, and voice controls.",
+  "author": {
+    "name": "ECHO OMEGA PRIME",
+    "email": "bobbymcwilliams@echo-op.com",
+    "url": "https://github.com/echoomegaprime"
+  },
+  "homepage": "https://swarm-app.echo-op.com",
+  "repository": "https://github.com/echoomegaprime/echo-swarm",
+  "license": "Proprietary",
+  "keywords": ["echo", "swarm", "fusion", "multi-llm", "mcp", "voice"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Echo Swarm",
+    "shortDescription": "Convene and fuse GPT, Claude, Gemini, Grok, and local models.",
+    "longDescription": "Interactive multi-LLM council with OAuth-first provider seats, visible collaboration, recovered Echo Swarm Brain tools, Maximalist Fusion Worker output, evidence-aware review and validation, and voice input/readback.",
+    "developerName": "ECHO OMEGA PRIME",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Multi-LLM", "MCP", "Voice"],
+    "websiteURL": "https://swarm-app.echo-op.com",
+    "defaultPrompt": [
+      "Brainstorm this with my live model council.",
+      "Review and validate this evidence with the swarm.",
+      "Run Maximalist Fusion and return the fused result."
+    ],
+    "brandColor": "#8B5CF6"
+  }
+}

@@ -13,7 +13,9 @@ export interface ToolTrace {
   result: string;
 }
 
-export type BuildPhase = "spec" | "implement" | "review" | "merge";
+export type BuildPhase = "spec" | "implement" | "review" | "merge" | "fusion" | "brain";
+
+export type SwarmMessageSource = "council" | "fusion" | "brain";
 
 export interface TokenUsage {
   prompt: number;
@@ -32,6 +34,8 @@ export interface SwarmMessage {
   role: "user" | "assistant" | "notice";
   modelId?: ModelId;
   model?: string;
+  source?: SwarmMessageSource;
+  runId?: string;
   content: string;
   traces?: ToolTrace[];
   phase?: BuildPhase;

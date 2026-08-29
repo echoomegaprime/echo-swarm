@@ -18,9 +18,9 @@ const MAX_RESPONSE_CHARS = 1_000_000;
 const MAX_OBJECTIVE_CHARS = 12_000;
 const MAX_CONTEXT_CHARS = 16_000;
 const MAX_ANSWER_CHARS = 30_000;
-const MAX_CALLS = 200;
+const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
-const MAX_WALL_SECONDS = 600;
+const MAX_WALL_SECONDS = 420;
 const RUN_ID = /^run_[A-Za-z0-9_-]{4,80}$/u;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{1,128}$/u;
 
@@ -128,9 +128,7 @@ export const MAXIMALIST_MCP_TOOLS = [
   },
 ] as const;
 
-const maximalistNames = new Set<MaximalistToolName>(
-  MAXIMALIST_MCP_TOOLS.map((tool) => tool.name),
-);
+const maximalistNames = new Set<MaximalistToolName>(MAXIMALIST_MCP_TOOLS.map((tool) => tool.name));
 
 export function isMaximalistToolName(name: string): name is MaximalistToolName {
   return maximalistNames.has(name as MaximalistToolName);
@@ -180,9 +178,7 @@ async function workerJson(path: string, init?: RequestInit): Promise<JsonRecord>
       throw new SafeMaximalistError("Maximalist Fusion worker returned an oversized response.");
     }
     if (!response.ok) {
-      throw new SafeMaximalistError(
-        `Maximalist Fusion worker returned HTTP ${response.status}.`,
-      );
+      throw new SafeMaximalistError(`Maximalist Fusion worker returned HTTP ${response.status}.`);
     }
     try {
       return asRecord(JSON.parse(text));
@@ -309,7 +305,9 @@ function fail(operation: string, error: unknown): McpToolResult {
   const message = redact(error instanceof Error ? error.message : "Maximalist Fusion call failed.");
   return {
     isError: true,
-    content: [{ type: "text", text: `# Swarm Maximalist Fusion\n\n**Status:** failed\n\n${message}` }],
+    content: [
+      { type: "text", text: `# Swarm Maximalist Fusion\n\n**Status:** failed\n\n${message}` },
+    ],
     structuredContent: { ok: false, operation, error: message },
   };
 }
@@ -330,7 +328,8 @@ function resultText(body: JsonRecord): string {
   }
   const result = asRecord(body.result);
   const answer = typeof result.answer === "string" ? result.answer : "(no fused answer returned)";
-  const confidence = typeof result.confidence === "number" ? result.confidence.toFixed(3) : "unknown";
+  const confidence =
+    typeof result.confidence === "number" ? result.confidence.toFixed(3) : "unknown";
   const lines = [
     "# Swarm Maximalist Fusion",
     "",
@@ -364,7 +363,8 @@ export async function handleMaximalistTool(
   try {
     if (name === "swarm_maximalist_health") {
       const body = await workerJson("/health");
-      if (body.ok !== true) throw new SafeMaximalistError("Maximalist Fusion worker is not healthy.");
+      if (body.ok !== true)
+        throw new SafeMaximalistError("Maximalist Fusion worker is not healthy.");
       return ok(
         operation,
         body,

@@ -1,15 +1,45 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { authMiddleware } from "@/lib/auth/middleware";
 import { MODEL_IDS } from "./catalog";
 import { pingNodes, providerStatus, runSwarm } from "./engine.server";
 import { writeSwarmFiles } from "./apply.server";
 import { pollGithubDevice, pullCliAuth, startGithubDevice } from "./oauth.server";
+import { handleMaximalistTool } from "./mcp-maximalist.server";
 
 const modelId = z.enum(MODEL_IDS);
 
 const authMode = z.enum(["oauth", "key"]);
 
 const optionalStr = z.string().optional();
+
+const fusionRunId = z.string().regex(/^run_[A-Za-z0-9_-]{4,80}$/u);
+
+const fusionBudget = z
+  .object({
+    max_calls: z.number().int().min(1).max(120).optional(),
+    max_cost_usd: z.number().positive().max(5).optional(),
+    max_wall_s: z.number().positive().max(420).optional(),
+  })
+  .optional();
+
+function fusionClientResult(result: Awaited<ReturnType<typeof handleMaximalistTool>>) {
+  const structured = result.structuredContent;
+  return {
+    ok: structured.ok === true && result.isError !== true,
+    isError: result.isError === true,
+    text: result.content[0]?.text ?? "",
+    run_id: typeof structured.run_id === "string" ? structured.run_id : undefined,
+    phase: typeof structured.phase === "string" ? structured.phase : undefined,
+    done: structured.done === true,
+    profile: typeof structured.profile === "string" ? structured.profile : undefined,
+    seats_fingerprint:
+      typeof structured.seats_fingerprint === "string" ? structured.seats_fingerprint : undefined,
+    result:
+      structured.result && typeof structured.result === "object" ? structured.result : undefined,
+    error: typeof structured.error === "string" ? structured.error : undefined,
+  };
+}
 
 const turnInput = z.object({
   prompt: z.string().min(1).max(8000),
@@ -112,3 +142,40 @@ export const startGhDevice = createServerFn({ method: "POST" }).handler(async ()
 export const pollGhDevice = createServerFn({ method: "POST" })
   .validator(z.object({ device_code: z.string().min(4).max(200) }))
   .handler(async ({ data }) => pollGithubDevice(data.device_code));
+
+export const getFusionHealth = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async () =>
+    fusionClientResult(await handleMaximalistTool("swarm_maximalist_health", {})),
+  );
+
+export const startFusionRun = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      objective: z.string().min(1).max(12000),
+      context: z.record(z.string(), z.unknown()).optional(),
+      budget: fusionBudget,
+      idempotency_key: z
+        .string()
+        .regex(/^[A-Za-z0-9._:-]{1,128}$/u)
+        .optional(),
+    }),
+  )
+  .handler(async ({ data }) =>
+    fusionClientResult(await handleMaximalistTool("swarm_maximalist_start", data)),
+  );
+
+export const getFusionResult = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ run_id: fusionRunId }))
+  .handler(async ({ data }) =>
+    fusionClientResult(await handleMaximalistTool("swarm_maximalist_result", data)),
+  );
+
+export const resumeFusionRun = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ run_id: fusionRunId }))
+  .handler(async ({ data }) =>
+    fusionClientResult(await handleMaximalistTool("swarm_maximalist_resume", data)),
+  );

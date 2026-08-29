@@ -1,7 +1,14 @@
 import type { SwarmMode } from "./catalog";
+import {
+  isCollaborationPurpose,
+  PURPOSE_META,
+  PURPOSE_MODES,
+  purposePrompt,
+  type CollaborationPurpose,
+} from "./purpose";
 import type { SwarmTurnResult } from "./types";
 
-export type CollaborationPurpose = "brainstorm" | "debate" | "build" | "review" | "plan" | "report";
+export type { CollaborationPurpose } from "./purpose";
 
 export type CollaborationPlan = {
   purpose: CollaborationPurpose;
@@ -29,24 +36,6 @@ type CollaborationOutput = {
   truncated?: boolean;
 };
 
-const PURPOSE_MODES: Record<CollaborationPurpose, SwarmMode> = {
-  brainstorm: "parallel",
-  debate: "debate",
-  build: "buildheavy",
-  review: "roundtable",
-  plan: "conductor",
-  report: "conductor",
-};
-
-const PURPOSE_TITLES: Record<CollaborationPurpose, string> = {
-  brainstorm: "Brainstorm",
-  debate: "Debate",
-  build: "Build assistance",
-  review: "Review",
-  plan: "Plan",
-  report: "Consolidated report",
-};
-
 const MAX_TASK_CHARS = 12_000;
 const MAX_TURN_CHARS = 12_000;
 const MAX_CHAT_CHARS = 30_000;
@@ -56,16 +45,7 @@ export function createCollaborationPlan(
   purpose: unknown,
 ): CollaborationPlan | (CollaborationPlan & { error: string }) {
   const normalizedPurpose: CollaborationPurpose | undefined =
-    purpose === undefined
-      ? "brainstorm"
-      : purpose === "brainstorm" ||
-          purpose === "debate" ||
-          purpose === "build" ||
-          purpose === "review" ||
-          purpose === "plan" ||
-          purpose === "report"
-        ? purpose
-        : undefined;
+    purpose === undefined ? "brainstorm" : isCollaborationPurpose(purpose) ? purpose : undefined;
   const errorPurpose = normalizedPurpose ?? "brainstorm";
   const errorPlan = (error: string): CollaborationPlan & { error: string } => ({
     purpose: errorPurpose,
@@ -81,18 +61,12 @@ export function createCollaborationPlan(
     return errorPlan(`The collaboration task is too long (maximum ${MAX_TASK_CHARS} characters).`);
   }
   if (!normalizedPurpose) {
-    return errorPlan("Purpose must be brainstorm, debate, build, review, plan, or report.");
+    return errorPlan(
+      "Purpose must be brainstorm, debate, build, review, validate, certify, plan, or report.",
+    );
   }
 
-  const prompt =
-    normalizedPurpose === "report"
-      ? [
-          "Create a decision-ready report for the current chat.",
-          "Synthesize the evidence, agreements, disagreements, risks, and recommended next actions.",
-          "Use concise Markdown headings and do not invent work that was not performed.",
-          `Task:\n${normalizedTask}`,
-        ].join("\n")
-      : normalizedTask;
+  const prompt = purposePrompt(normalizedPurpose, normalizedTask);
 
   return {
     purpose: normalizedPurpose,
@@ -187,7 +161,7 @@ export function formatCollaborationResult(
   const lines = [
     "# Swarm Collaboration",
     "",
-    `**Purpose:** ${PURPOSE_TITLES[plan.purpose]}`,
+    `**Purpose:** ${PURPOSE_META[plan.purpose].label}`,
     `**Mode:** ${plan.mode}`,
     `**Contributors:** ${contributorCount}`,
     "",

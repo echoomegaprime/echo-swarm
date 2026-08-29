@@ -23,9 +23,9 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
             openapi: "3.1.0",
             info: {
               title: "Echo Swarm",
-              version: "1.0.0",
+              version: "1.3.0",
               description:
-                "Multi-lab LLM council. POST a brief or speak MCP JSON-RPC. Surface identity via x-echo-agent; optional Bearer when SWARM_MCP_TOKEN is set.",
+                "Interactive multi-lab LLM council plus recovered Echo Swarm Brain and Maximalist Fusion MCP tools. POST a brief or speak MCP JSON-RPC. Surface identity via x-echo-agent; optional Bearer when SWARM_MCP_TOKEN is set.",
             },
             servers: [{ url: origin, description: "Deployed Swarm origin" }],
             paths: {
@@ -45,13 +45,7 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
                             prompt: { type: "string" },
                             mode: {
                               type: "string",
-                              enum: [
-                                "parallel",
-                                "roundtable",
-                                "debate",
-                                "conductor",
-                                "buildheavy",
-                              ],
+                              enum: ["parallel", "roundtable", "debate", "conductor", "buildheavy"],
                             },
                             host: { type: "string", enum: [...MODEL_IDS] },
                             seats: {

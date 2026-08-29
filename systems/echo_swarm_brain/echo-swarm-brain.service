@@ -1,0 +1,30 @@
+[Unit]
+Description=Echo Swarm Brain — sovereign FORGE replacement for CF echo-swarm-brain (grading API)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forge
+WorkingDirectory=/home/forge/echo-swarm-brain
+Environment=PYTHONUNBUFFERED=1
+Environment=PGHOST=localhost
+Environment=PGUSER=echo
+Environment=PGDATABASE=echo
+Environment=PORT=8260
+Environment=ALPHA_LLM_BASE=http://127.0.0.1:8200/v1
+Environment=ALPHA_LLM_MODEL=echo-prime
+EnvironmentFile=-/etc/echo/echo-swarm-brain.env
+EnvironmentFile=-/var/run/echo/discovery_mesh/mesh.env
+EnvironmentFile=-/home/forge/.echo_env
+StandardInput=null
+ExecStart=/usr/bin/python3 -m uvicorn app:app --host 127.0.0.1 --port 8260 --log-level info
+Restart=on-failure
+RestartSec=5
+MemoryMax=768M
+
+Slice=echo-fleet.slice
+MemoryHigh=614M
+
+[Install]
+WantedBy=multi-user.target
