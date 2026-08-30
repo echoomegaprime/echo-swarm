@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { editionCredentialSummary } from "@/lib/swarm/plugin-input";
+import { publicOriginForRequest } from "@/lib/swarm/public-origin";
 
 export const Route = createFileRoute("/api/plugin.json")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const url = new URL(request.url);
-        const origin = `${url.protocol}//${url.host}`;
+        const origin = publicOriginForRequest(request);
         const edition = editionCredentialSummary();
         return Response.json({
           schema_version: "v1",

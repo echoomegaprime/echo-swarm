@@ -16,6 +16,7 @@ import {
   isCertificateToolName,
 } from "@/lib/certificate/mcp.server";
 import { editionCredentialSummary } from "@/lib/swarm/plugin-input";
+import { publicOriginForRequest } from "@/lib/swarm/public-origin";
 
 const tools = [
   {
@@ -298,7 +299,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
             return Response.json({ jsonrpc: "2.0", id, result }, { headers: cors });
           }
           if (isCertificateToolName(name)) {
-            const result = await handleCertificateTool(name, new URL(request.url).origin);
+            const result = await handleCertificateTool(name, publicOriginForRequest(request));
             return Response.json({ jsonrpc: "2.0", id, result }, { headers: cors });
           }
           return Response.json(
