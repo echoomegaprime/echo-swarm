@@ -2,14 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MODEL_IDS } from "@/lib/swarm/catalog";
 import { PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
 import { SWARM_EDITION } from "@/lib/swarm/edition";
+import { publicOriginForRequest } from "@/lib/swarm/public-origin";
 
 export const Route = createFileRoute("/api/plugin/openapi.json")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: cors }),
       GET: async ({ request }) => {
-        const url = new URL(request.url);
-        const origin = `${url.protocol}//${url.host}`;
+        const origin = publicOriginForRequest(request);
         const agentParam = {
           name: "x-echo-agent",
           in: "header" as const,

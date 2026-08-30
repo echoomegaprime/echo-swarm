@@ -6,6 +6,10 @@ Echo Swarm ships from one reviewed source tree as two explicit builds. An editio
 
 `ECHO_SWARM_EDITION=private-oauth`
 
+Set `ECHO_PUBLIC_BASE_URL` to the canonical HTTPS origin when the service runs
+behind a reverse proxy; generated manifests and certificate links never infer a
+public scheme from proxy transport when this value is present.
+
 - This is the authoritative ECHO deployment.
 - Remote model credentials come from approved OAuth or signed-in CLI sessions.
 - The UI does not render caller API-key inputs for remote seats.
