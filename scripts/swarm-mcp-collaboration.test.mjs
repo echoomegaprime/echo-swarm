@@ -47,6 +47,12 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
   const providerAddress = provider.address();
   assert(providerAddress && typeof providerAddress === "object");
   const forgeUrl = `http://127.0.0.1:${providerAddress.port}/v1`;
+  const originalForgeUrl = process.env.FORGE_BASE_URL;
+  process.env.FORGE_BASE_URL = forgeUrl;
+  t.after(() => {
+    if (originalForgeUrl === undefined) delete process.env.FORGE_BASE_URL;
+    else process.env.FORGE_BASE_URL = originalForgeUrl;
+  });
   const agentHeaders = {
     "content-type": "application/json",
     "x-echo-agent": "acceptance-test",
@@ -93,7 +99,7 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
   assert.equal(FORGE_DEFAULT_MODEL, "c3po-code:echo-qwen38-abliterated-256k");
   assert.equal(MODELS.qwen.name, "Qwen3.8 27B");
   const forgeSeat = resolveSeat("qwen", {}, {}, {});
-  assert.equal(forgeSeat?.url, "http://127.0.0.1:11438/v1/chat/completions");
+  assert.equal(forgeSeat?.url, `${forgeUrl}/chat/completions`);
   assert.equal(forgeSeat?.model, "c3po-code:echo-qwen38-abliterated-256k");
   const allPurposeModes = {
     brainstorm: "parallel",
@@ -142,10 +148,7 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
   for (const [purpose, expectedMode] of Object.entries(expectedModes)) {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        ...agentHeaders,
-        "x-forge-url": forgeUrl,
-      },
+      headers: agentHeaders,
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: id++,

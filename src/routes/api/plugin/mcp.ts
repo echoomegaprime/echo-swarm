@@ -10,6 +10,12 @@ import {
   MAXIMALIST_MCP_TOOLS,
 } from "@/lib/swarm/mcp-maximalist.server";
 import { parseSwarmBody, PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
+import {
+  CERTIFICATE_MCP_TOOLS,
+  handleCertificateTool,
+  isCertificateToolName,
+} from "@/lib/certificate/mcp.server";
+import { editionCredentialSummary } from "@/lib/swarm/plugin-input";
 
 const tools = [
   {
@@ -111,6 +117,7 @@ const tools = [
     description: "Ping live labs and local FORGE/TEMPER nodes.",
     inputSchema: { type: "object", properties: {} },
   },
+  ...CERTIFICATE_MCP_TOOLS,
   ...BRAIN_MCP_TOOLS,
   ...MAXIMALIST_MCP_TOOLS,
 ];
@@ -142,9 +149,10 @@ export const Route = createFileRoute("/api/plugin/mcp")({
           {
             protocol: "mcp",
             name: "echo-swarm",
-            version: "1.3.0",
+            version: "1.4.0",
             transport: "streamable-http",
             agent: auth.agent,
+            ...editionCredentialSummary(),
             tools,
           },
           { headers: cors },
@@ -188,9 +196,9 @@ export const Route = createFileRoute("/api/plugin/mcp")({
               result: {
                 protocolVersion: "2025-03-26",
                 capabilities: { tools: {} },
-                serverInfo: { name: "echo-swarm", version: "1.3.0" },
+                serverInfo: { name: "echo-swarm", version: "1.4.0" },
                 instructions:
-                  "Interactive multi-LLM council, recovered sovereign Echo Swarm Brain, and asynchronous MAXIMALIST_RECONSTRUCTED Fusion Worker. Call swarm_convene for brainstorm/review/validate/certify collaboration; swarm_brain_* for recovered Trinity and hybrid routes; or swarm_maximalist_health, swarm_maximalist_start, and swarm_maximalist_result for deep fused output.",
+                  "Interactive multi-LLM council, recovered sovereign Echo Swarm Brain, asynchronous MAXIMALIST_RECONSTRUCTED Fusion Worker, and signed release certificates. Call swarm_convene for collaboration; swarm_brain_* for recovered Trinity and hybrid routes; swarm_maximalist_* for deep fused output; or swarm_certificate_* for exact-release signature state and downloadable certificate artifacts.",
               },
             },
             { headers: cors },
@@ -287,6 +295,10 @@ export const Route = createFileRoute("/api/plugin/mcp")({
           }
           if (isMaximalistToolName(name)) {
             const result = await handleMaximalistTool(name, args);
+            return Response.json({ jsonrpc: "2.0", id, result }, { headers: cors });
+          }
+          if (isCertificateToolName(name)) {
+            const result = await handleCertificateTool(name, new URL(request.url).origin);
             return Response.json({ jsonrpc: "2.0", id, result }, { headers: cors });
           }
           return Response.json(

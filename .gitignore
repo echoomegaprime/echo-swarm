@@ -4,6 +4,8 @@ node_modules/
 __pycache__/
 *.py[cod]
 dist/
+dist-private/
+dist-public/
 .output/
 .vinxi/
 .tanstack/

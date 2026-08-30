@@ -9,6 +9,11 @@ import {
   type SwarmMode,
 } from "./catalog";
 import type { SwarmTurnInput } from "./types";
+import {
+  authModesForEdition,
+  providerKeysForEdition,
+  PUBLIC_API_EDITION,
+} from "./edition";
 
 function isModelId(v: unknown): v is ModelId {
   return typeof v === "string" && (MODEL_IDS as readonly string[]).includes(v);
@@ -35,7 +40,7 @@ export function parseSwarmBody(rec: Record<string, unknown>, request?: Request):
   const host = isModelId(rec.host) ? rec.host : "grok";
   const seats = Array.isArray(rec.seats) ? rec.seats.filter(isModelId) : (["grok"] as ModelId[]);
   const keysRaw = rec.keys && typeof rec.keys === "object" ? (rec.keys as Record<string, unknown>) : {};
-  const keys: ProviderKeys = {
+  const parsedKeys: ProviderKeys = {
     grok: headerOr(request, "x-grok-key", keysRaw.grok),
     openai: headerOr(request, "x-openai-key", keysRaw.openai),
     anthropic: headerOr(request, "x-anthropic-key", keysRaw.anthropic),
@@ -59,13 +64,15 @@ export function parseSwarmBody(rec: Record<string, unknown>, request?: Request):
     temperModel: typeof keysRaw.temperModel === "string" ? keysRaw.temperModel : undefined,
   };
   const authRaw = rec.auth && typeof rec.auth === "object" ? (rec.auth as Record<string, unknown>) : {};
-  const auth: AuthModes = {
+  const parsedAuth: AuthModes = {
     grok: isAuth(authRaw.grok) ? authRaw.grok : "oauth",
     openai: isAuth(authRaw.openai) ? authRaw.openai : "oauth",
     anthropic: isAuth(authRaw.anthropic) ? authRaw.anthropic : "oauth",
     deepseek: isAuth(authRaw.deepseek) ? authRaw.deepseek : "oauth",
     github: isAuth(authRaw.github) ? authRaw.github : "oauth",
   };
+  const keys = providerKeysForEdition(parsedKeys);
+  const auth = authModesForEdition(parsedAuth);
   const picksRaw = rec.picks && typeof rec.picks === "object" ? (rec.picks as Record<string, unknown>) : {};
   const picks: Picks = {};
   for (const [k, v] of Object.entries(picksRaw)) {
@@ -109,3 +116,17 @@ export const PLUGIN_CORS = {
     "content-type, authorization, x-echo-agent, x-echo-caller, x-swarm-agent, x-swarm-token, x-openai-key, x-anthropic-key, x-google-key, x-deepseek-key, x-grok-key, x-github-token, x-forge-url, x-temper-url, x-groq-key, x-together-key, x-openrouter-key, x-samba-key, x-cohere-key, x-perplexity-key, x-mistral-key, x-cerebras-key, x-fireworks-key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
+
+export function editionCredentialSummary() {
+  return PUBLIC_API_EDITION
+    ? {
+        edition: "public-api" as const,
+        credentialMode: "caller-api-keys" as const,
+        serverRemoteCredentials: false,
+      }
+    : {
+        edition: "private-oauth" as const,
+        credentialMode: "oauth-and-signed-sessions" as const,
+        serverRemoteCredentials: true,
+      };
+}

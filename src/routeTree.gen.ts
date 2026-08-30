@@ -10,6 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CertificateRouteImport } from './routes/certificate'
+import { Route as ApiCertificateRouteImport } from './routes/api/certificate'
+import { Route as ApiCertificateDotsvgRouteImport } from './routes/api/certificate[.]svg'
 import { Route as ApiPluginDotjsonRouteImport } from './routes/api/plugin[.]json'
 import { Route as ApiPluginApplyRouteImport } from './routes/api/plugin/apply'
 import { Route as ApiPluginMcpRouteImport } from './routes/api/plugin/mcp'
@@ -20,6 +23,21 @@ import { Route as ApiPluginSwarmRouteImport } from './routes/api/plugin/swarm'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CertificateRoute = CertificateRouteImport.update({
+  id: '/certificate',
+  path: '/certificate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCertificateRoute = ApiCertificateRouteImport.update({
+  id: '/api/certificate',
+  path: '/api/certificate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCertificateDotsvgRoute = ApiCertificateDotsvgRouteImport.update({
+  id: '/api/certificate.svg',
+  path: '/api/certificate.svg',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPluginDotjsonRoute = ApiPluginDotjsonRouteImport.update({
@@ -55,6 +73,9 @@ const ApiPluginSwarmRoute = ApiPluginSwarmRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/certificate': typeof CertificateRoute
+  '/api/certificate': typeof ApiCertificateRoute
+  '/api/certificate.svg': typeof ApiCertificateDotsvgRoute
   '/api/plugin.json': typeof ApiPluginDotjsonRoute
   '/api/plugin/apply': typeof ApiPluginApplyRoute
   '/api/plugin/mcp': typeof ApiPluginMcpRoute
@@ -64,6 +85,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/certificate': typeof CertificateRoute
+  '/api/certificate': typeof ApiCertificateRoute
+  '/api/certificate.svg': typeof ApiCertificateDotsvgRoute
   '/api/plugin.json': typeof ApiPluginDotjsonRoute
   '/api/plugin/apply': typeof ApiPluginApplyRoute
   '/api/plugin/mcp': typeof ApiPluginMcpRoute
@@ -74,6 +98,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/certificate': typeof CertificateRoute
+  '/api/certificate': typeof ApiCertificateRoute
+  '/api/certificate.svg': typeof ApiCertificateDotsvgRoute
   '/api/plugin.json': typeof ApiPluginDotjsonRoute
   '/api/plugin/apply': typeof ApiPluginApplyRoute
   '/api/plugin/mcp': typeof ApiPluginMcpRoute
@@ -85,6 +112,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/certificate'
+    | '/api/certificate'
+    | '/api/certificate.svg'
     | '/api/plugin.json'
     | '/api/plugin/apply'
     | '/api/plugin/mcp'
@@ -94,6 +124,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/certificate'
+    | '/api/certificate'
+    | '/api/certificate.svg'
     | '/api/plugin.json'
     | '/api/plugin/apply'
     | '/api/plugin/mcp'
@@ -103,6 +136,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/certificate'
+    | '/api/certificate'
+    | '/api/certificate.svg'
     | '/api/plugin.json'
     | '/api/plugin/apply'
     | '/api/plugin/mcp'
@@ -113,6 +149,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CertificateRoute: typeof CertificateRoute
+  ApiCertificateRoute: typeof ApiCertificateRoute
+  ApiCertificateDotsvgRoute: typeof ApiCertificateDotsvgRoute
   ApiPluginDotjsonRoute: typeof ApiPluginDotjsonRoute
   ApiPluginApplyRoute: typeof ApiPluginApplyRoute
   ApiPluginMcpRoute: typeof ApiPluginMcpRoute
@@ -128,6 +167,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/certificate': {
+      id: '/certificate'
+      path: '/certificate'
+      fullPath: '/certificate'
+      preLoaderRoute: typeof CertificateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/certificate': {
+      id: '/api/certificate'
+      path: '/api/certificate'
+      fullPath: '/api/certificate'
+      preLoaderRoute: typeof ApiCertificateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/certificate.svg': {
+      id: '/api/certificate.svg'
+      path: '/api/certificate.svg'
+      fullPath: '/api/certificate.svg'
+      preLoaderRoute: typeof ApiCertificateDotsvgRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/plugin.json': {
@@ -177,6 +237,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CertificateRoute: CertificateRoute,
+  ApiCertificateRoute: ApiCertificateRoute,
+  ApiCertificateDotsvgRoute: ApiCertificateDotsvgRoute,
   ApiPluginDotjsonRoute: ApiPluginDotjsonRoute,
   ApiPluginApplyRoute: ApiPluginApplyRoute,
   ApiPluginMcpRoute: ApiPluginMcpRoute,

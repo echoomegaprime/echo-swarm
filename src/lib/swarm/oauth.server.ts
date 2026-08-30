@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { PUBLIC_API_EDITION } from "./edition";
 
 const exec = promisify(execFile);
 const GH_CLI_CLIENT = "Iv1.b507a08c87ecfe98";
@@ -43,6 +44,9 @@ async function ghToken(): Promise<string | undefined> {
 }
 
 export async function pullCliAuth(): Promise<CliTokens> {
+  if (PUBLIC_API_EDITION) {
+    return { sources: [] };
+  }
   const sources: string[] = [];
   const home = homedir();
   let github = await ghToken();
@@ -83,8 +87,8 @@ export async function pullCliAuth(): Promise<CliTokens> {
     if (openai) sources.push("~/.codex/auth.json");
   }
 
-  const grok = pickStr(process.env.XAI_API_KEY) || pickStr(process.env.XAI_OAUTH_TOKEN);
-  if (grok) sources.push("XAI_API_KEY");
+  const grok = pickStr(process.env.XAI_OAUTH_TOKEN);
+  if (grok) sources.push("XAI_OAUTH_TOKEN");
   if (!github) {
     github = pickStr(process.env.GITHUB_TOKEN) || pickStr(process.env.GH_TOKEN);
     if (github) sources.push("GITHUB_TOKEN");
@@ -104,10 +108,25 @@ interface DeviceStart {
 export async function startGithubDevice(): Promise<
   { ok: true; data: DeviceStart } | { ok: false; error: string }
 > {
+  return startGithubDeviceWithScope("read:user gist copilot");
+}
+
+export async function startCommanderGithubDevice(): Promise<
+  { ok: true; data: DeviceStart } | { ok: false; error: string }
+> {
+  return startGithubDeviceWithScope("read:user");
+}
+
+async function startGithubDeviceWithScope(
+  scope: string,
+): Promise<{ ok: true; data: DeviceStart } | { ok: false; error: string }> {
+  if (PUBLIC_API_EDITION) {
+    return { ok: false, error: "OAuth device authorization is disabled in the public API-key edition." };
+  }
   const clientId = githubClientId();
   const body = new URLSearchParams({
     client_id: clientId,
-    scope: "read:user gist copilot",
+    scope,
   });
   try {
     const res = await fetch("https://github.com/login/device/code", {
@@ -140,6 +159,9 @@ export async function startGithubDevice(): Promise<
 export async function pollGithubDevice(
   deviceCode: string,
 ): Promise<{ ok: true; token: string } | { ok: false; error: string; pending?: boolean }> {
+  if (PUBLIC_API_EDITION) {
+    return { ok: false, error: "OAuth device authorization is disabled in the public API-key edition." };
+  }
   const clientId = githubClientId();
   const body = new URLSearchParams({
     client_id: clientId,

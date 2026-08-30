@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "editions": {
+    "private-oauth": {
+      "authoritative": true,
+      "remote_credentials": "oauth-and-signed-sessions",
+      "commander_signing": true,
+      "installers": "/install/"
+    },
+    "public-api": {
+      "authoritative": false,
+      "remote_credentials": "caller-api-keys",
+      "server_remote_credentials": false,
+      "commander_signing": false,
+      "installers": "/install/public/"
+    }
+  }
+}
+

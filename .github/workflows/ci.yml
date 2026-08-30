@@ -43,6 +43,9 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Build public API-key edition
+        run: npm run build:public
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
