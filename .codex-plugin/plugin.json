@@ -1,7 +1,7 @@
 {
   "name": "echo-swarm",
-  "version": "1.3.0",
-  "description": "Interactive multi-LLM council with Echo Swarm Brain, Maximalist Fusion, review, validation, certification review, and voice controls.",
+  "version": "1.4.0",
+  "description": "Private OAuth-first multi-LLM council with Echo Swarm Brain, Maximalist Fusion, signed release certificates, and voice controls.",
   "author": {
     "name": "ECHO OMEGA PRIME",
     "email": "bobbymcwilliams@echo-op.com",
@@ -15,15 +15,16 @@
   "interface": {
     "displayName": "Echo Swarm",
     "shortDescription": "Convene and fuse GPT, Claude, Gemini, Grok, and local models.",
-    "longDescription": "Interactive multi-LLM council with OAuth-first provider seats, visible collaboration, recovered Echo Swarm Brain tools, Maximalist Fusion Worker output, evidence-aware review and validation, and voice input/readback.",
+    "longDescription": "Private OAuth-first multi-LLM council with visible collaboration, recovered Echo Swarm Brain tools, Maximalist Fusion Worker output, evidence-aware review, and a downloadable release certificate cryptographically signed by the AI Builder, ECHO Certification Forge, and Commander.",
     "developerName": "ECHO OMEGA PRIME",
     "category": "Developer Tools",
-    "capabilities": ["Interactive", "Multi-LLM", "MCP", "Voice"],
+    "capabilities": ["Interactive", "Multi-LLM", "MCP", "Voice", "Digital Certificates"],
     "websiteURL": "https://swarm-app.echo-op.com",
     "defaultPrompt": [
       "Brainstorm this with my live model council.",
       "Review and validate this evidence with the swarm.",
-      "Run Maximalist Fusion and return the fused result."
+      "Run Maximalist Fusion and return the fused result.",
+      "Show and verify the signed release certificate."
     ],
     "brandColor": "#8B5CF6"
   }

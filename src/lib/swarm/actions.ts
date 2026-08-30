@@ -4,8 +4,14 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { MODEL_IDS } from "./catalog";
 import { pingNodes, providerStatus, runSwarm } from "./engine.server";
 import { writeSwarmFiles } from "./apply.server";
-import { pollGithubDevice, pullCliAuth, startGithubDevice } from "./oauth.server";
+import {
+  pollGithubDevice,
+  pullCliAuth,
+  startCommanderGithubDevice,
+  startGithubDevice,
+} from "./oauth.server";
 import { handleMaximalistTool } from "./mcp-maximalist.server";
+import { authModesForEdition } from "./edition";
 
 const modelId = z.enum(MODEL_IDS);
 
@@ -108,7 +114,11 @@ export const getProviderStatus = createServerFn({ method: "GET" }).handler(async
 export const sendSwarmTurn = createServerFn({ method: "POST" })
   .validator(turnInput)
   .handler(async ({ data }) => {
-    return runSwarm({ ...data, auth: data.auth ?? {}, picks: data.picks ?? {} });
+    return runSwarm({
+      ...data,
+      auth: authModesForEdition(data.auth ?? {}),
+      picks: data.picks ?? {},
+    });
   });
 
 export const pingFleet = createServerFn({ method: "POST" })
@@ -140,6 +150,14 @@ export const startGhDevice = createServerFn({ method: "POST" }).handler(async ()
 );
 
 export const pollGhDevice = createServerFn({ method: "POST" })
+  .validator(z.object({ device_code: z.string().min(4).max(200) }))
+  .handler(async ({ data }) => pollGithubDevice(data.device_code));
+
+export const startCommanderGithubOAuth = createServerFn({ method: "POST" }).handler(async () =>
+  startCommanderGithubDevice(),
+);
+
+export const pollCommanderGithubOAuth = createServerFn({ method: "POST" })
   .validator(z.object({ device_code: z.string().min(4).max(200) }))
   .handler(async ({ data }) => pollGithubDevice(data.device_code));
 

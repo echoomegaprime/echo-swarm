@@ -1,6 +1,6 @@
 # Swarm
 
-Interactive multi-LLM council. Grok, GPT, Claude, Gemini, DeepSeek, Groq, OpenRouter, GitHub Models, free-tier providers, local FORGE Qwen3.8 27B (abliterated, 256K context), and TEMPER Qwen Image — one visible table, shared plugin bus, paid-sub OAuth first.
+Interactive multi-LLM council with two security-explicit editions, a recovered sovereign Swarm Brain, Maximalist Fusion, and graphical exact-release certificates.
 
 **Live:** [https://swarm-app.echo-op.com](https://swarm-app.echo-op.com)  
 **Install all surfaces:** [docs/INSTALL.md](docs/INSTALL.md)
@@ -14,6 +14,8 @@ npm run dev
 
 Open `http://localhost:8080`. Connect labs, select a purpose and mode, brief the table, and optionally enable Fusion and voice readback.
 
+Build the authoritative private OAuth edition with `npm run build:private`; build the distributable bring-your-own-key edition with `npm run build:public`. See [docs/EDITIONS.md](docs/EDITIONS.md).
+
 ## Interactive chat
 
 - Purpose controls bring models into the visible conversation for brainstorm, debate, build, review, evidence validation, advisory certification review, planning, and reporting.
@@ -21,6 +23,7 @@ Open `http://localhost:8080`. Connect labs, select a purpose and mode, brief the
 - **Fusion on** sends the completed council evidence to the loopback Echo Fusion Worker and inserts the fused result back into the same chat as a separate `MAXIMALIST_RECONSTRUCTED` message.
 - The microphone fills the composer through the browser Web Speech API. Readback can speak any reply or automatically speak completed fused output when the browser exposes speech synthesis.
 - “Certify” is an evidence-gated advisory review. It never claims to replace CertForge plus the Certification Forge GitHub App exact-SHA receipts.
+- **Certificate** opens the real release certificate graphic. The certificate is complete only after the AI Builder, independent Certification Forge certifier, and Commander signatures all verify. See [docs/CERTIFICATES.md](docs/CERTIFICATES.md).
 
 Production unit on FORGE: `echo-swarm.service` → `:8365` → Cloudflare `swarm-app.echo-op.com`.
 
@@ -36,9 +39,9 @@ Production unit on FORGE: `echo-swarm.service` → `:8365` → Cloudflare `swarm
 
 ## Connect
 
-Connect → **Pull CLIs** (`gh auth token`, Claude Code, Codex, xAI env) or **GitHub device**. Paste OAuth or an API key. FORGE/TEMPER take a base URL.
+The authoritative private edition exposes **Pull CLIs** for approved OAuth/signed-session credentials and hides remote API-key entry. The public edition disables CLI/session harvesting and accepts caller-owned API keys. FORGE/TEMPER remain local seats.
 
-OAuth is preferred for GPT/Codex, Claude, Grok, DeepSeek, and GitHub when the corresponding local login or environment token exists. Gemini currently uses Google AI Studio API-key authentication in this runtime. Free-tier and local seats remain available through Mistral, Groq, OpenRouter/GitHub Models where the account permits them, and FORGE/TEMPER. Tokens stay in the browser (`localStorage`). Never commit them.
+The edition policy is enforced server-side as well as in the UI. A request cannot flip the private service into API-key mode or make the public service borrow private remote-provider environment credentials. Never commit tokens or keys.
 
 ## Host plugin
 
@@ -50,11 +53,18 @@ Other chats POST the same contract:
 - SSE: `POST /api/plugin/stream`
 - MCP: `/api/plugin/mcp`
 - Apply files: `POST /api/plugin/apply`
+- Certificate page: `/certificate`
+- Signed certificate JSON: `/api/certificate`
+- Certificate SVG: `/api/certificate.svg`
 - Icon: `/__grok/icon-180.png`
 
 Auth headers: **`x-echo-agent: <surface>`** (required). When `SWARM_MCP_TOKEN` is set on the host, also `Authorization: Bearer <token>`.
 
-Lab key headers: `x-grok-key`, `x-openai-key`, `x-anthropic-key`, `x-github-token`, `x-forge-url`, `x-temper-url`, plus the other lab keys.
+Lab key headers are accepted only by the public API-key edition. The private OAuth edition discards caller credential and local-node override headers before execution.
+
+### Signed certificate tools
+
+The MCP catalog now includes `swarm_certificate_status` and `swarm_certificate_artifact`. They verify signature state and return the printable page, SVG download, signed JSON envelope, and independent Certification Forge record without granting a model authority to apply the Commander's signature.
 
 ### Maximalist Fusion Brain
 

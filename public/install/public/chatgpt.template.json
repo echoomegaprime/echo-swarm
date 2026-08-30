@@ -1,0 +1,11 @@
+{
+  "name": "echo-swarm-public",
+  "mcp": {
+    "type": "http",
+    "url": "https://YOUR-ECHO-SWARM-PUBLIC-HOST/api/plugin/mcp",
+    "headers": {
+      "x-echo-agent": "chatgpt",
+      "x-openai-key": "${OPENAI_API_KEY}"
+    }
+  }
+}

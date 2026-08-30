@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Cable, Download, Menu, Plug, Plus, X } from "lucide-react";
+import { Award, Cable, Download, Menu, Plug, Plus, X } from "lucide-react";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import { Composer } from "./composer";
 import { EmptyHero, Thread } from "./thread";
 import { ArtifactsBar } from "./artifacts-bar";
 import { DiffPanel } from "./diff-panel";
+import { EDITION_LABEL } from "@/lib/swarm/edition";
 
 export function SwarmApp() {
   const setLive = useSwarm((s) => s.setLive);
@@ -113,6 +114,9 @@ export function SwarmApp() {
               <span className="font-serif text-lg tracking-tight md:hidden">Swarm</span>
             </div>
             <div className="flex items-center gap-1">
+              <span className="hidden text-[0.68rem] font-medium tracking-[0.12em] text-subtle uppercase xl:inline">
+                {EDITION_LABEL}
+              </span>
               <Button
                 variant="ghost"
                 size="icon"
@@ -137,6 +141,12 @@ export function SwarmApp() {
               <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => setPluginOpen(true)}>
                 <Cable className="size-4" />
                 Plugin
+              </Button>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Certificate" asChild>
+                <a href="/certificate"><Award className="size-4" /></a>
+              </Button>
+              <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
+                <a href="/certificate"><Award className="size-4" />Certificate</a>
               </Button>
               <Button variant="outline" size="icon" className="md:hidden" aria-label="Connect" onClick={() => setConnectOpen(true)}>
                 <Plug className="size-4" />

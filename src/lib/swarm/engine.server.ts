@@ -27,6 +27,7 @@ import type {
   TokenUsage,
   ToolTrace,
 } from "./types";
+import { allowsServerRemoteCredentials, PUBLIC_API_EDITION } from "./edition";
 
 const MAX_TOKENS = 700;
 const FETCH_MS = 50_000;
@@ -64,12 +65,16 @@ function envOf(...names: string[]): string | undefined {
   return undefined;
 }
 
+function remoteEnvOf(...names: string[]): string | undefined {
+  return allowsServerRemoteCredentials() ? envOf(...names) : undefined;
+}
+
 export function grokIsLive(): boolean {
-  return Boolean(envOf("XAI_API_KEY"));
+  return Boolean(remoteEnvOf("XAI_OAUTH_TOKEN"));
 }
 
 export function githubEnvToken(): string | undefined {
-  return envOf("GITHUB_TOKEN", "GH_TOKEN");
+  return remoteEnvOf("GITHUB_TOKEN", "GH_TOKEN");
 }
 
 export function forgeEnv() {
@@ -92,8 +97,12 @@ export function providerStatus() {
   const env: Partial<Record<KeyField, boolean>> = {};
   for (const id of Object.keys(MODELS) as ModelId[]) {
     const def = MODELS[id];
-    if (def.envVars?.some((n) => envOf(n))) env[def.keyField] = true;
+    if (def.kind === "local" && def.envVars?.some((n) => envOf(n))) {
+      env[def.keyField] = true;
+    }
   }
+  if (grokIsLive()) env.grok = true;
+  if (githubEnvToken()) env.github = true;
   return {
     grok: grokIsLive(),
     github: Boolean(githubEnvToken()),
@@ -162,7 +171,7 @@ export function resolveSeat(
   }
 
   if (id === "grok") {
-    const key = keys.grok?.trim() || envOf("XAI_API_KEY");
+    const key = keys.grok?.trim() || remoteEnvOf("XAI_OAUTH_TOKEN");
     if (!key) return undefined;
     return {
       id,
@@ -232,7 +241,7 @@ export function resolveSeat(
   }
 
   if (id === "gemini") {
-    const key = keys.google?.trim() || envOf("GOOGLE_API_KEY", "GEMINI_API_KEY");
+    const key = keys.google?.trim();
     if (!key) return undefined;
     return {
       id,
@@ -245,9 +254,7 @@ export function resolveSeat(
     };
   }
 
-  const key =
-    keys[def.keyField]?.trim() ||
-    (def.envVars?.length ? envOf(...def.envVars) : undefined);
+  const key = keys[def.keyField]?.trim();
   if (!key || !def.url) return undefined;
   return {
     id,
@@ -1363,14 +1370,18 @@ export async function runSwarm(
     if (resolveSeat(id, input.keys, input.auth, input.picks)) return true;
     skipped.push({
       modelId: id,
-      reason: `${MODELS[id].name} is not connected. Open Connect and paste OAuth or a key.`,
+      reason: PUBLIC_API_EDITION
+        ? `${MODELS[id].name} is not connected. Add its API key in Connect.`
+        : `${MODELS[id].name} has no approved OAuth/session credential. Pull private sessions in Connect.`,
     });
     return false;
   });
   if (!connected.length) {
     return {
       ok: false,
-      error: "No live seats. Connect OAuth (or an API key) in Connect. Grok can ride the app xAI key.",
+      error: PUBLIC_API_EDITION
+        ? "No live seats. Add caller-owned API keys in Connect. This public edition cannot use private server credentials."
+        : "No live seats. Pull approved OAuth/session credentials in Connect or use a private local fleet seat.",
     };
   }
 

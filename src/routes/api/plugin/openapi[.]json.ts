@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MODEL_IDS } from "@/lib/swarm/catalog";
 import { PLUGIN_CORS as cors } from "@/lib/swarm/plugin-input";
+import { SWARM_EDITION } from "@/lib/swarm/edition";
 
 export const Route = createFileRoute("/api/plugin/openapi.json")({
   server: {
@@ -23,9 +24,9 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
             openapi: "3.1.0",
             info: {
               title: "Echo Swarm",
-              version: "1.3.0",
+              version: "1.4.0",
               description:
-                "Interactive multi-lab LLM council plus recovered Echo Swarm Brain and Maximalist Fusion MCP tools. POST a brief or speak MCP JSON-RPC. Surface identity via x-echo-agent; optional Bearer when SWARM_MCP_TOKEN is set.",
+                `Echo Swarm ${SWARM_EDITION}: multi-model council, recovered Brain, Maximalist Fusion, and signed release-certificate tools. Surface identity via x-echo-agent; optional Bearer when SWARM_MCP_TOKEN is set.`,
             },
             servers: [{ url: origin, description: "Deployed Swarm origin" }],
             paths: {
@@ -103,6 +104,20 @@ export const Route = createFileRoute("/api/plugin/openapi.json")({
                     },
                   },
                   responses: { "200": { description: "JSON-RPC result" } },
+                },
+              },
+              "/api/certificate": {
+                get: {
+                  operationId: "getEchoSwarmCertificate",
+                  summary: "Get the machine-verifiable signed release certificate",
+                  responses: { "200": { description: "Certificate envelope and signature state" } },
+                },
+              },
+              "/api/certificate.svg": {
+                get: {
+                  operationId: "getEchoSwarmCertificateGraphic",
+                  summary: "Get the graphical SVG release certificate",
+                  responses: { "200": { description: "image/svg+xml certificate" } },
                 },
               },
             },

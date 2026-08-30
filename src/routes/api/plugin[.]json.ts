@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { editionCredentialSummary } from "@/lib/swarm/plugin-input";
 
 export const Route = createFileRoute("/api/plugin.json")({
   server: {
@@ -6,14 +7,16 @@ export const Route = createFileRoute("/api/plugin.json")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const origin = `${url.protocol}//${url.host}`;
+        const edition = editionCredentialSummary();
         return Response.json({
           schema_version: "v1",
           name_for_human: "Swarm",
           name_for_model: "swarm_council",
           description_for_human:
-            "Interactive multi-lab LLM council with the recovered Echo Swarm Brain, asynchronous Maximalist Fusion output, and voice-enabled chat. OAuth rides paid subs where supported. Free-tier, FORGE, and TEMPER seats are supported.",
+            "Interactive multi-lab LLM council with recovered Echo Swarm Brain, Maximalist Fusion, voice chat, and a graphical release certificate signed by the AI Builder, independent AI Certifier, and Commander.",
           description_for_model:
-            "Call swarm_convene to bring Grok, GPT, Claude, Gemini, DeepSeek, GitHub Copilot, free-tier providers, FORGE Qwen3.8 27B, and TEMPER Qwen Image into the current chat for brainstorm, debate, build, review, validate, certify, plan, or report work. Call swarm_brain_* for the separately recovered sovereign Trinity and hybrid routes. For deep asynchronous fusion, call swarm_maximalist_health, swarm_maximalist_start, then swarm_maximalist_result; completed output preserves dissent, uncertainty, confidence, and provenance. Prefer OAuth tokens from Claude Code, Codex, Grok, DeepSeek, and `gh auth token` where supported. Certification-purpose output is advisory unless an exact-SHA CertForge and Certification Forge receipt is supplied.",
+            "Call swarm_convene for visible multi-model collaboration, swarm_brain_* for recovered sovereign routes, swarm_maximalist_* for deep fused output, and swarm_certificate_* to verify or download the signed exact-release certificate. Certification-purpose model output is advisory; official status comes only from the verified certificate envelope.",
+          edition,
           auth: {
             type: "header",
             instructions:
@@ -29,6 +32,11 @@ export const Route = createFileRoute("/api/plugin.json")({
           },
           contact_email: "ops@echo-op.com",
           logo_url: `${origin}/__grok/icon-180.png`,
+          certificate: {
+            page: `${origin}/certificate`,
+            json: `${origin}/api/certificate`,
+            svg: `${origin}/api/certificate.svg`,
+          },
           endpoints: {
             run: {
               method: "POST",
@@ -38,23 +46,7 @@ export const Route = createFileRoute("/api/plugin.json")({
                 mode: "parallel | roundtable | debate | conductor | buildheavy",
                 host: "grok | gpt | claude | gemini | deepseek | mistral | openrouter | groq | together | samba | cerebras | fireworks | perplexity | cohere | qwen | qwenimg | github",
                 seats: ["grok", "gpt", "claude", "gemini", "deepseek", "qwen", "qwenimg", "github"],
-                keys: {
-                  grok: "oauth or api",
-                  openai: "codex oauth or api",
-                  anthropic: "claude code oauth or api",
-                  google: "api",
-                  deepseek: "oauth or api",
-                  github: "gh auth token",
-                  forgeUrl: "FORGE /v1",
-                  temperUrl: "TEMPER /v1",
-                },
-                auth: {
-                  grok: "oauth",
-                  openai: "oauth",
-                  anthropic: "oauth",
-                  deepseek: "oauth",
-                  github: "oauth",
-                },
+                credential_policy: edition,
               },
             },
           },

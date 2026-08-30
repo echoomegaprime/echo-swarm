@@ -14,6 +14,17 @@ import {
   type SwarmMode,
 } from "./catalog";
 import type { Insight, QuoteTarget, SeatSpend, StreamSeat, SwarmMessage, SwarmSession, TokenUsage } from "./types";
+import {
+  PRIVATE_OAUTH_EDITION,
+  REMOTE_PROVIDER_SECRET_FIELDS,
+} from "./edition";
+
+function persistableKeys(keys: ProviderKeys): ProviderKeys {
+  if (!PRIVATE_OAUTH_EDITION) return keys;
+  const safe = { ...keys };
+  for (const field of REMOTE_PROVIDER_SECRET_FIELDS) delete safe[field];
+  return safe;
+}
 
 const emptySession = (): SwarmSession => ({
   id: crypto.randomUUID(),
@@ -236,7 +247,7 @@ export const useSwarm = create<SwarmState>()(
       name: "swarm-council-v2",
       skipHydration: true,
       partialize: (s) => ({
-        keys: s.keys,
+        keys: persistableKeys(s.keys),
         auth: s.auth,
         picks: s.picks,
         host: s.host,
@@ -246,6 +257,16 @@ export const useSwarm = create<SwarmState>()(
         activeId: s.activeId,
         spend: s.spend,
       }),
+      merge: (persisted, current) => {
+        const saved = persisted && typeof persisted === "object"
+          ? (persisted as Partial<SwarmState>)
+          : {};
+        return {
+          ...current,
+          ...saved,
+          keys: persistableKeys(saved.keys ?? {}),
+        };
+      },
     },
   ),
 );

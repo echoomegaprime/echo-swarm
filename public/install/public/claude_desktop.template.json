@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "echo-swarm-public": {
+      "type": "http",
+      "url": "https://YOUR-ECHO-SWARM-PUBLIC-HOST/api/plugin/mcp",
+      "headers": {
+        "x-echo-agent": "claude",
+        "x-anthropic-key": "${ANTHROPIC_API_KEY}"
+      }
+    }
+  }
+}
+

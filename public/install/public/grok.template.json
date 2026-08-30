@@ -1,0 +1,14 @@
+{
+  "name": "echo-swarm-public",
+  "title": "Echo Swarm Public",
+  "version": "1.4.0",
+  "description": "Public bring-your-own-key Echo Swarm edition. It cannot read private OAuth sessions or server remote-provider credentials.",
+  "mcp": {
+    "type": "http",
+    "url": "https://YOUR-ECHO-SWARM-PUBLIC-HOST/api/plugin/mcp",
+    "headers": {
+      "x-echo-agent": "grok",
+      "x-grok-key": "${XAI_API_KEY}"
+    }
+  }
+}

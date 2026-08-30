@@ -1,5 +1,5 @@
 import { ExternalLink, Unplug } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,11 @@ import {
 import { pollGhDevice, pullCliTokens, startGhDevice } from "@/lib/swarm/actions";
 import { isConnected, maskKey, useSwarm, type FleetLive } from "@/lib/swarm/store";
 import { ModelPick } from "./model-pick";
-import { cn } from "@/lib/utils";
+import {
+  EDITION_LABEL,
+  PRIVATE_OAUTH_EDITION,
+  PUBLIC_API_EDITION,
+} from "@/lib/swarm/edition";
 
 export function ConnectDialog() {
   const open = useSwarm((s) => s.connectOpen);
@@ -50,12 +54,13 @@ export function ConnectDialog() {
             Connect labs
           </DialogTitle>
           <DialogDescription className="text-sm text-muted">
-            OAuth first for paid subs. Pull tokens from `gh`, Claude Code, and
-            Codex on this machine, or GitHub device login. Speed labs take a
-            console key. FORGE and TEMPER are local metal.
+            {PRIVATE_OAUTH_EDITION
+              ? "Private OAuth edition. Pull approved signed-in CLI sessions; caller API-key entry is disabled. FORGE and TEMPER remain private local metal."
+              : "Public API-key edition. Bring your own provider keys; this build cannot read CLI sessions or private server credentials."}
           </DialogDescription>
         </DialogHeader>
-        <CliBar />
+        <Badge variant="outline">{EDITION_LABEL}</Badge>
+        {PRIVATE_OAUTH_EDITION ? <CliBar /> : null}
         {GROUP_META.map((g) => (
           <GroupSection
             key={g.id}
@@ -93,7 +98,9 @@ function GroupSection({
   onClear: (field: keyof ProviderKeys) => void;
   onAuth: (field: OAuthField, mode: AuthMode) => void;
 }) {
-  const ids = idsIn(group);
+  const ids = idsIn(group).filter(
+    (id) => group === "fleet" || PUBLIC_API_EDITION || MODELS[id].oauth,
+  );
   if (!ids.length) return null;
   return (
     <Section title={label}>
@@ -139,36 +146,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function AuthToggle({
-  value,
-  oauthLabel,
-  keyLabel,
-  onChange,
-}: {
-  value: AuthMode;
-  oauthLabel: string;
-  keyLabel: string;
-  onChange: (v: AuthMode) => void;
-}) {
-  return (
-    <div className="mb-2 flex gap-1">
-      {(["oauth", "key"] as const).map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => onChange(mode)}
-          className={cn(
-            "h-8 rounded-full px-3 text-xs font-medium transition-colors duration-150",
-            value === mode ? "bg-accent text-accent-fg" : "bg-surface text-muted hover:text-fg",
-          )}
-        >
-          {mode === "oauth" ? oauthLabel : keyLabel}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function SeatConnect({
   id,
   keys,
@@ -195,6 +172,12 @@ function SeatConnect({
     (id === "grok" && live.grok && !stored) ||
     (id === "github" && live.github && !stored);
 
+  useEffect(() => {
+    if (PUBLIC_API_EDITION && def.oauth && onAuth && authMode !== "key") {
+      onAuth(def.keyField as OAuthField, "key");
+    }
+  }, [authMode, def.keyField, def.oauth, onAuth]);
+
   return (
     <li className="rounded-lg bg-raised p-3 shadow-[var(--shadow-border)]">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -209,15 +192,14 @@ function SeatConnect({
         </div>
         <Badge variant={connected ? "ok" : "outline"}>{connected ? "Live" : "Dark"}</Badge>
       </div>
-      {def.oauth && onAuth && authMode ? (
-        <AuthToggle
-          value={authMode}
-          oauthLabel={def.oauthLabel ?? "OAuth"}
-          keyLabel="API (billed)"
-          onChange={(m) => onAuth(def.keyField as OAuthField, m)}
-        />
+      {PUBLIC_API_EDITION && def.oauth ? (
+        <Badge variant="outline">API key only</Badge>
       ) : null}
-      <p className="mb-2 text-xs text-muted">{docs.hint}</p>
+      <p className="mb-2 text-xs text-muted">
+        {PRIVATE_OAUTH_EDITION
+          ? `${def.oauthLabel ?? "OAuth"} is the only accepted remote credential mode in this private build.`
+          : docs.hint}
+      </p>
       <div className="mb-2">
         <ModelPick id={id} />
       </div>
@@ -226,15 +208,21 @@ function SeatConnect({
           {id === "grok" ? "Using the app xAI connection." : "Using the app GitHub token."}
         </p>
       ) : null}
-      <TokenRow
-        label={`${def.name} token`}
-        placeholder={stored ? maskKey(stored) : docs.placeholder}
-        href={docs.href}
-        linkLabel={docs.label}
-        stored={Boolean(stored)}
-        onSet={(v) => onSet(field, v)}
-        onClear={() => onClear(field)}
-      />
+      {PUBLIC_API_EDITION ? (
+        <TokenRow
+          label={`${def.name} API key`}
+          placeholder={stored ? maskKey(stored) : docs.placeholder}
+          href={docs.href}
+          linkLabel={docs.label}
+          stored={Boolean(stored)}
+          onSet={(v) => onSet(field, v)}
+          onClear={() => onClear(field)}
+        />
+      ) : (
+        <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-muted">
+          {stored ? "OAuth/session credential loaded for this browser session." : "Use Pull CLIs above to load an approved OAuth/session credential."}
+        </div>
+      )}
     </li>
   );
 }
@@ -447,7 +435,7 @@ function CliBar() {
     <div className="mb-4 rounded-lg bg-raised p-3 shadow-[var(--shadow-border)]">
       <p className="mb-2 text-xs font-medium tracking-wide text-subtle uppercase">OAuth capture</p>
       <p className="mb-2 text-xs text-muted">
-        Pulls `gh auth token`, Claude Code, Codex, and the app xAI key. GitHub
+        Pulls `gh auth token`, Claude Code, Codex, and an xAI OAuth token. GitHub
         device uses the public gh CLI client if no GITHUB_CLIENT_ID is set.
       </p>
       <div className="flex flex-wrap gap-2">
