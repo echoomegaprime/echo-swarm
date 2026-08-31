@@ -1,0 +1,22 @@
+{
+  "profile": "MAXIMALIST_RECONSTRUCTED",
+  "historical_parity": false,
+  "version": "0.3.0",
+  "source_repository": "maximalist-reconstructed",
+  "source_branch": "agent/session-canary-completion",
+  "source_revision": "d1e68e2f263d93648e494c5419852693fdd03fe0",
+  "artifact": {
+    "path": "vendor/maximalist_reconstructed-0.3.0-py3-none-any.whl",
+    "bytes": 47514,
+    "sha256": "d9372efef0e671b3bc6b082ec3d20d2aeaf1210f16aab91199e690b07bb1047d"
+  },
+  "acceptance": {
+    "unit_tests_passed": 51,
+    "anvil_live_run_id": "cc0f932a045043f68468da512ea374a8",
+    "anvil_calls_completed": 10,
+    "anvil_calls_failed": 0,
+    "anvil_uncertain_calls": 0,
+    "codex_host_session": "passed"
+  },
+  "integration_boundary": "The wheel is an additive portable core. It does not replace or rewrite systems/echo_maximalist_fusion provenance-locked source."
+}

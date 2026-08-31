@@ -10,6 +10,7 @@ Fusion worker, and twelve-tool MCP contract required for release.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -44,6 +45,9 @@ CRITICAL_SURFACES = (
     "systems/echo_maximalist_fusion/SOURCE_PROVENANCE.json",
     "systems/echo_maximalist_fusion/src/echo_fusion/engine.py",
     "systems/echo_maximalist_fusion/src/echo_fusion_worker/app.py",
+    "systems/echo_maximalist_fusion/src/echo_fusion_worker/portable_core.py",
+    "systems/maximalist_reconstructed_core/SOURCE_PROVENANCE.json",
+    "systems/maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.3.0-py3-none-any.whl",
 )
 
 JSON_SURFACES = (
@@ -54,6 +58,7 @@ JSON_SURFACES = (
     "package.json",
     "systems/echo_swarm_brain/SOURCE_PROVENANCE.json",
     "systems/echo_maximalist_fusion/SOURCE_PROVENANCE.json",
+    "systems/maximalist_reconstructed_core/SOURCE_PROVENANCE.json",
 )
 
 EXPECTED_MCP_TOOLS = (
@@ -174,6 +179,34 @@ def validate_tool_contract() -> None:
         fail("missing MCP tool declaration(s): " + ", ".join(missing))
 
 
+def validate_portable_core(provenance: object) -> None:
+    if not isinstance(provenance, dict):
+        fail("portable core provenance must contain an object")
+    if provenance.get("profile") != "MAXIMALIST_RECONSTRUCTED":
+        fail("portable core profile drifted")
+    if provenance.get("historical_parity") is not False:
+        fail("portable core must not claim historical parity")
+    if provenance.get("version") != "0.3.0":
+        fail("portable core version drifted")
+    if provenance.get("source_revision") != "d1e68e2f263d93648e494c5419852693fdd03fe0":
+        fail("portable core source revision drifted")
+    artifact = provenance.get("artifact")
+    if not isinstance(artifact, dict):
+        fail("portable core artifact record is missing")
+    relative = artifact.get("path")
+    if not isinstance(relative, str):
+        fail("portable core artifact path is invalid")
+    path = Path("systems/maximalist_reconstructed_core") / relative
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        fail(f"portable core artifact cannot be read: {exc}")
+    if len(payload) != artifact.get("bytes"):
+        fail("portable core artifact length does not match provenance")
+    if hashlib.sha256(payload).hexdigest() != artifact.get("sha256"):
+        fail("portable core artifact hash does not match provenance")
+
+
 def main() -> None:
     require_surfaces()
     parsed = parse_json_surfaces()
@@ -182,6 +215,7 @@ def main() -> None:
     validate_app_opt_in(parsed[".echo/apps.json"])
     validate_journey_manifest(parsed[".echo/certification.json"])
     validate_tool_contract()
+    validate_portable_core(parsed["systems/maximalist_reconstructed_core/SOURCE_PROVENANCE.json"])
     print(
         "ECHO_SWARM_CRITICAL_JOURNEY_OK "
         f"python_modules={module_count} "

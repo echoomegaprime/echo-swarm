@@ -25,7 +25,7 @@ from echo_fusion.schemas import Budget, RunState
 from .config import load_seats, seats_fingerprint
 from .factory import build_engine, clamp_budget
 
-WORKER_VERSION = "0.1.0-skeleton"
+WORKER_VERSION = "0.2.0"
 WAIT_CAP_SECONDS = 30.0
 
 logging.basicConfig(
@@ -77,8 +77,13 @@ def create_app(*, engine: Any, profile: str, fingerprint: str) -> FastAPI:
         finally:
             rec["done"] = True
 
-    def _start(objective: str, budget: Budget) -> str:
-        state = RunState(objective=objective, budget=budget)
+    def _start(objective: str, context: dict[str, Any], budget: Budget) -> str:
+        create_state = getattr(engine, "create_state", None)
+        state = (
+            create_state(objective, context, budget)
+            if callable(create_state)
+            else RunState(objective=objective, budget=budget)
+        )
         run_id = state.run_id
         app.state.runs[run_id] = {"phase": "running", "done": False, "result": None, "error": None}
         log.info("run.start run_id=%s objective=%.80s max_calls=%d",
@@ -95,10 +100,13 @@ def create_app(*, engine: Any, profile: str, fingerprint: str) -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict:
+        health_metadata = getattr(engine, "health_metadata", None)
+        metadata = await health_metadata() if callable(health_metadata) else {}
         return {
             "ok": True, "service": "echo-fusion-worker", "version": WORKER_VERSION,
             "profile": app.state.profile, "seats_fingerprint": app.state.fingerprint,
             "active_runs": sum(1 for r in app.state.runs.values() if not r["done"]),
+            **metadata,
         }
 
     @app.post("/run")
@@ -123,7 +131,7 @@ def create_app(*, engine: Any, profile: str, fingerprint: str) -> FastAPI:
                                 content={"run_id": rid,
                                          "phase": (rec or {}).get("phase", "running")})
         budget = clamp_budget(Budget(**req.budget) if req.budget else None)
-        rid = _start(req.objective, budget)
+        rid = _start(req.objective, req.context or {}, budget)
         if req.idempotency_key:
             app.state.idem[req.idempotency_key] = rid
         if req.wait:
@@ -140,6 +148,9 @@ def create_app(*, engine: Any, profile: str, fingerprint: str) -> FastAPI:
     @app.get("/runs/{run_id}")
     async def get_run(run_id: str) -> dict:
         rec = app.state.runs.get(run_id)
+        if rec is None:
+            restore = getattr(engine, "get_run", None)
+            rec = restore(run_id) if callable(restore) else None
         if rec is None:
             raise HTTPException(status_code=404, detail=f"unknown run_id {run_id}")
         return {"run_id": run_id, "phase": rec["phase"], "done": rec["done"],
@@ -165,10 +176,14 @@ def create_app(*, engine: Any, profile: str, fingerprint: str) -> FastAPI:
 
     @app.post("/selftest")
     async def selftest() -> dict:
-        """Run a fixed objective through the configured engine end-to-end. Proves the
-        whole pipeline is wired without touching any external system."""
-        state = RunState(objective="selftest: name one U.S. state capital",
-                         budget=clamp_budget(None))
+        """Run a fixed objective through the configured engine end-to-end."""
+        budget = clamp_budget(None)
+        create_state = getattr(engine, "create_state", None)
+        state = (
+            create_state("selftest: name one U.S. state capital", {"selftest": True}, budget)
+            if callable(create_state)
+            else RunState(objective="selftest: name one U.S. state capital", budget=budget)
+        )
         result = await engine.drive_state(state)
         ok = bool(result.answer)
         log.info("selftest ok=%s run_id=%s", ok, result.run_id)
@@ -188,6 +203,8 @@ def _build_from_env() -> FastAPI:
     profile = os.environ.get("FUSION_PROFILE", "stub")
     if profile == "live":
         import echo_fusion_worker.live_adapters  # noqa: F401 — registers the "live" profile
+    elif profile == "reconstructed_v03":
+        import echo_fusion_worker.portable_core  # noqa: F401 — exact 0.3.0 portable core
     cfg = load_seats(seats_path)   # fail-closed: bad/missing config aborts boot
     fingerprint = seats_fingerprint(cfg)
     log.info("boot seats=%s profile=%s fingerprint=%s", seats_path, profile, fingerprint)

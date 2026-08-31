@@ -19,15 +19,15 @@
     "bind": "127.0.0.1:8157"
   },
   "repository_transformations": {
-    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
+    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v03 integration adds an explicit adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
     "files": {
       "src/echo_fusion/arbitration.py": {
         "quench_sha256": "4a478cf1f62bbc8b66ed873f038bbc67f364df90611a7bd3b68238c852b0518f",
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-        "quench_sha256": "366a3d3e78ed656863d652da4719a7fc15a39bfcf547a7ac45b2ed74d9515e7b",
-        "changes": "idempotent wait:true retries now wait for an existing run and return its completed result or error inline"
+        "quench_sha256": "9d51a4352d6c322f97dd52ad189d3ab38d307cc50fc05a38233674628b797653",
+        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v03 profile receives bounded caller context, reports exact core identity, and can read completed durable state after process restart"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -40,6 +40,20 @@
       "tests/test_invariants.py": {
         "quench_sha256": "c20c1c641819f8f9bf5627d7ff5d6ed8a8c755f9491655b1abeee2955c2be362",
         "changes": "the strong-tier cascade control now uses a trusted extractor that explicitly verifies evidence before suppressing elite review"
+      }
+    },
+    "repository_additions": {
+      "src/echo_fusion_worker/portable_core.py": {
+        "quench_sha256": "00069f57b7f2b570836916f41eb5a51781c7cf12030f8856f4593c9d50f705b6",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.3.0 package to the existing asynchronous worker contract without modifying the recovered echo_fusion engine"
+      },
+      "tests/test_portable_core.py": {
+        "quench_sha256": "4ea6d2a18c0d02a806b3d28e1e1ff5e86bc70210cfda8153449ebf57d383809f",
+        "changes": "verifies artifact hash, 40-seat and separate-Trinity invariants, worker round-trip, non-parity provenance, and restart readback"
+      },
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.3.0-py3-none-any.whl": {
+        "source_revision": "d1e68e2f263d93648e494c5419852693fdd03fe0",
+        "sha256": "d9372efef0e671b3bc6b082ec3d20d2aeaf1210f16aab91199e690b07bb1047d"
       }
     }
   },

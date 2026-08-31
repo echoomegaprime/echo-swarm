@@ -10,6 +10,8 @@ The Echo Swarm web/MCP application does not expose a caller-supplied worker addr
 
 Independent PR review corrected `src/echo_fusion/arbitration.py` so identical claim prefixes from different subproblems cannot be collapsed as replication and asynchronous completion cannot promote a less-corroborated member as the visible cluster representative. It corrected `src/echo_fusion_worker/app.py` so an idempotent `wait:true` retry waits for an existing run and returns the completed result inline; `src/echo_fusion_worker/live_adapters.py` now parses whitespace-tolerant key assignments; and `src/echo_fusion/schemas.py` caps model-labeled external evidence until trusted verification. `SOURCE_PROVENANCE.json` retains the original FORGE SHAs and records the corrected QUENCH SHAs; the authored `tests/test_review_regressions.py` plus the updated trusted-evidence cascade invariant prove these boundaries.
 
+The later `reconstructed_v03` integration is additive. It does not relabel or replace the recovered `echo_fusion` engine. `src/echo_fusion_worker/portable_core.py` adapts the separately versioned wheel under `../maximalist_reconstructed_core/`; that directory binds the wheel to source SHA `d1e68e2f263d93648e494c5419852693fdd03fe0` and SHA-256 `d9372efef0e671b3bc6b082ec3d20d2aeaf1210f16aab91199e690b07bb1047d`. The app change only exposes this adapter when `FUSION_PROFILE=reconstructed_v03`; its existing `stub` and `live` profiles remain distinct.
+
 ## Verification
 
 ```powershell
@@ -18,6 +20,8 @@ $env:PYTHONPATH = "$PWD\systems\echo_maximalist_fusion\src"
 .\.venv-brain\Scripts\python.exe systems\echo_maximalist_fusion\tests\test_worker.py
 .\.venv-brain\Scripts\python.exe systems\echo_maximalist_fusion\tests\test_live_adapters.py
 .\.venv-brain\Scripts\python.exe -m pytest systems\echo_maximalist_fusion\tests\test_review_regressions.py -q
+$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.3.0-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
+.\.venv-brain\Scripts\python.exe -m pytest systems\echo_maximalist_fusion\tests\test_portable_core.py -q
 ```
 
 Do not restart `echo-workers` or the production Fusion unit merely to test this vendored source. Run isolated tests or a separate loopback development instance.

@@ -18,6 +18,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const workerCalls = [];
   const fakeBearer = ["Bearer", "maximalist-integration-token"].join(" ");
   const fakeApiKey = ["API_KEY", "maximalist-integration-key"].join("=");
+  let historicalParity = false;
   const worker = createHttpServer(async (request, response) => {
     const body = await jsonBody(request);
     workerCalls.push({ method: request.method, url: request.url, body });
@@ -28,8 +29,20 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
         JSON.stringify({
           ok: true,
           service: "echo-fusion-worker",
-          version: "0.1.0-skeleton",
-          profile: "live",
+          version: "0.2.0",
+          profile: "MAXIMALIST_RECONSTRUCTED",
+          historical_parity: historicalParity,
+          core_version: "0.3.0",
+          core_sha: "d1e68e2f263d93648e494c5419852693fdd03fe0",
+          provider_mode: "live",
+          runtime: "anvil_live",
+          configured_seat_count: 40,
+          trinity_separate: true,
+          ready: true,
+          planner_ready: true,
+          ready_swarm_seats: 40,
+          ready_trinity_seats: 3,
+          credential_values_exposed: false,
           seats_fingerprint: "63374b318f846f51",
           active_runs: 0,
         }),
@@ -56,7 +69,13 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
             major_findings: [{ claim: "Evidence-backed finding", confidence: 0.93 }],
             dissent: [{ claim: "Preserved minority position", confidence: 0.62 }],
             unresolved: ["One bounded uncertainty"],
-            provenance: { profile: "MAXIMALIST_RECONSTRUCTED" },
+            provenance: {
+              profile: "MAXIMALIST_RECONSTRUCTED",
+              historical_parity: false,
+              core_version: "0.3.0",
+              core_sha: "d1e68e2f263d93648e494c5419852693fdd03fe0",
+              trinity_separate: true,
+            },
           },
         }),
       );
@@ -145,7 +164,15 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
 
   const health = await rpc(2, "swarm_maximalist_health");
   assert.equal(health.result.structuredContent.ok, true);
-  assert.equal(health.result.structuredContent.profile, "live");
+  assert.equal(health.result.structuredContent.profile, "MAXIMALIST_RECONSTRUCTED");
+  assert.equal(health.result.structuredContent.historical_parity, false);
+  assert.equal(health.result.structuredContent.core_version, "0.3.0");
+  assert.equal(
+    health.result.structuredContent.core_sha,
+    "d1e68e2f263d93648e494c5419852693fdd03fe0",
+  );
+  assert.equal(health.result.structuredContent.configured_seat_count, 40);
+  assert.equal(health.result.structuredContent.trinity_separate, true);
   assert.equal(health.result.structuredContent.seats_fingerprint, "63374b318f846f51");
   assert.match(health.result.content[0].text, /Maximalist Fusion/i);
 
@@ -184,8 +211,14 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const resumed = await rpc(5, "swarm_maximalist_resume", { run_id: "run_acceptance" });
   assert.equal(resumed.result.structuredContent.phase, "resuming");
 
+  historicalParity = true;
+  const rejectedIdentity = await rpc(6, "swarm_maximalist_health");
+  assert.equal(rejectedIdentity.result.isError, true);
+  assert.match(rejectedIdentity.result.content[0].text, /identity/i);
+  historicalParity = false;
+
   const callsBeforeInvalid = workerCalls.length;
-  const invalid = await rpc(6, "swarm_maximalist_result", { run_id: "../../etc/passwd" });
+  const invalid = await rpc(7, "swarm_maximalist_result", { run_id: "../../etc/passwd" });
   assert.equal(invalid.result.isError, true);
   assert.match(invalid.result.content[0].text, /run_id/i);
   assert.equal(workerCalls.length, callsBeforeInvalid, "invalid run ids must fail before fetch");

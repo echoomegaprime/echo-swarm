@@ -21,6 +21,9 @@ const MAX_ANSWER_CHARS = 30_000;
 const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
 const MAX_WALL_SECONDS = 420;
+const REQUIRED_CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED";
+const REQUIRED_CORE_VERSION = "0.3.0";
+const REQUIRED_CORE_SHA = "d1e68e2f263d93648e494c5419852693fdd03fe0";
 const RUN_ID = /^run_[A-Za-z0-9_-]{4,80}$/u;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{1,128}$/u;
 
@@ -36,6 +39,12 @@ const commonOutputSchema = {
     phase: { type: "string" },
     done: { type: "boolean" },
     profile: { type: "string" },
+    historical_parity: { type: "boolean" },
+    core_version: { type: "string" },
+    core_sha: { type: "string" },
+    provider_mode: { type: "string" },
+    configured_seat_count: { type: "integer" },
+    trinity_separate: { type: "boolean" },
     seats_fingerprint: { type: "string" },
     result: { type: "object" },
     error: { type: "string" },
@@ -193,6 +202,56 @@ async function workerJson(path: string, init?: RequestInit): Promise<JsonRecord>
     throw new SafeMaximalistError("Maximalist Fusion worker is unavailable.");
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function assertCoreIdentity(
+  body: JsonRecord,
+  options: { requireLive?: boolean } = {},
+): void {
+  const { requireLive = false } = options;
+  if (
+    body.profile !== REQUIRED_CORE_PROFILE ||
+    body.historical_parity !== false ||
+    body.core_version !== REQUIRED_CORE_VERSION ||
+    body.core_sha !== REQUIRED_CORE_SHA ||
+    body.configured_seat_count !== 40 ||
+    body.trinity_separate !== true
+  ) {
+    throw new SafeMaximalistError(
+      "Maximalist Fusion worker identity does not match the certified reconstructed core.",
+    );
+  }
+  if (requireLive && (body.provider_mode !== "live" || body.ready !== true)) {
+    throw new SafeMaximalistError(
+      "Maximalist Fusion live execution is blocked by provider readiness.",
+    );
+  }
+}
+
+async function verifiedWorkerHealth(requireLive = false): Promise<JsonRecord> {
+  const body = await workerJson("/health");
+  if (body.ok !== true) {
+    throw new SafeMaximalistError("Maximalist Fusion worker is not healthy.");
+  }
+  assertCoreIdentity(body, { requireLive });
+  return body;
+}
+
+function assertResultIdentity(body: JsonRecord): void {
+  if (body.done !== true) return;
+  const result = asRecord(body.result);
+  const provenance = asRecord(result.provenance);
+  if (
+    provenance.profile !== REQUIRED_CORE_PROFILE ||
+    provenance.historical_parity !== false ||
+    provenance.core_version !== REQUIRED_CORE_VERSION ||
+    provenance.core_sha !== REQUIRED_CORE_SHA ||
+    provenance.trinity_separate !== true
+  ) {
+    throw new SafeMaximalistError(
+      "Maximalist Fusion result provenance does not match the certified reconstructed core.",
+    );
   }
 }
 
@@ -362,9 +421,7 @@ export async function handleMaximalistTool(
   const operation = name.replace("swarm_maximalist_", "");
   try {
     if (name === "swarm_maximalist_health") {
-      const body = await workerJson("/health");
-      if (body.ok !== true)
-        throw new SafeMaximalistError("Maximalist Fusion worker is not healthy.");
+      const body = await verifiedWorkerHealth();
       return ok(
         operation,
         body,
@@ -373,12 +430,15 @@ export async function handleMaximalistTool(
           "",
           "**Status:** healthy",
           `**Profile:** ${String(body.profile ?? "unknown")}`,
+          `**Core:** ${String(body.core_version ?? "unknown")} @ ${String(body.core_sha ?? "unknown")}`,
+          `**Provider mode:** ${String(body.provider_mode ?? "unknown")}`,
           `**Seats fingerprint:** ${String(body.seats_fingerprint ?? "unknown")}`,
           `**Active runs:** ${String(body.active_runs ?? "unknown")}`,
         ].join("\n"),
       );
     }
     if (name === "swarm_maximalist_start") {
+      await verifiedWorkerHealth(true);
       const body = await workerJson("/run", {
         method: "POST",
         body: JSON.stringify(startPayload(args)),
@@ -404,9 +464,11 @@ export async function handleMaximalistTool(
       if (body.error) {
         throw new SafeMaximalistError("The Maximalist run ended with an error.");
       }
+      assertResultIdentity(body);
       return ok(operation, body, resultText(asRecord(safeJson(body))));
     }
     const id = runId(args);
+    await verifiedWorkerHealth(true);
     const body = await workerJson("/resume", {
       method: "POST",
       body: JSON.stringify({ run_id: id }),
