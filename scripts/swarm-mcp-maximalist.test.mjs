@@ -32,9 +32,27 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
           version: "0.2.0",
           profile: "MAXIMALIST_RECONSTRUCTED",
           historical_parity: historicalParity,
-          core_version: "0.3.0",
-          core_sha: "d1e68e2f263d93648e494c5419852693fdd03fe0",
+          core_version: "0.4.0",
+          core_sha: "c7505746b578aae3dcd524ab2b218e86f257badd",
           provider_mode: "live",
+          capability_profile: "echo_full_read",
+          capability_mode: "live",
+          capability_ready: true,
+          ready_capability_count: 11,
+          selected_capability_ids: [
+            "echo.arcanum.search",
+            "echo.arcanum.enrich",
+            "echo.knowledge.search",
+            "echo.wolfram.llm",
+            "echo.context.recall",
+            "echo.brain.search",
+            "echo.doctrine.search",
+            "echo.caps.search",
+            "echo.engine.query",
+            "echo.wolfram.health",
+            "echo.dr.phoenix_status",
+          ],
+          degraded_capability_ids: [],
           runtime: "anvil_live",
           configured_seat_count: 40,
           trinity_separate: true,
@@ -72,10 +90,17 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
             provenance: {
               profile: "MAXIMALIST_RECONSTRUCTED",
               historical_parity: false,
-              core_version: "0.3.0",
-              core_sha: "d1e68e2f263d93648e494c5419852693fdd03fe0",
+              core_version: "0.4.0",
+              core_sha: "c7505746b578aae3dcd524ab2b218e86f257badd",
+              provider_mode: "live",
+              capability_profile: "echo_full_read",
+              capability_mode: "live",
               trinity_separate: true,
             },
+            capability_results: [
+              { capability_id: "echo.wolfram.llm", status: "completed" },
+              { capability_id: "echo.arcanum.search", status: "unauthorized" },
+            ],
           },
         }),
       );
@@ -166,11 +191,15 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert.equal(health.result.structuredContent.ok, true);
   assert.equal(health.result.structuredContent.profile, "MAXIMALIST_RECONSTRUCTED");
   assert.equal(health.result.structuredContent.historical_parity, false);
-  assert.equal(health.result.structuredContent.core_version, "0.3.0");
+  assert.equal(health.result.structuredContent.core_version, "0.4.0");
   assert.equal(
     health.result.structuredContent.core_sha,
-    "d1e68e2f263d93648e494c5419852693fdd03fe0",
+    "c7505746b578aae3dcd524ab2b218e86f257badd",
   );
+  assert.equal(health.result.structuredContent.capability_profile, "echo_full_read");
+  assert.equal(health.result.structuredContent.capability_mode, "live");
+  assert.equal(health.result.structuredContent.ready_capability_count, 11);
+  assert.match(health.result.content[0].text, /Capabilities:/i);
   assert.equal(health.result.structuredContent.configured_seat_count, 40);
   assert.equal(health.result.structuredContent.trinity_separate, true);
   assert.equal(health.result.structuredContent.seats_fingerprint, "63374b318f846f51");
@@ -201,6 +230,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert.equal(completed.result.structuredContent.result.confidence, 0.91);
   assert.match(completed.result.content[0].text, /Verified fused answer/);
   assert.match(completed.result.content[0].text, /Preserved minority position/);
+  assert.match(completed.result.content[0].text, /Capability grounding/i);
   assert.doesNotMatch(completed.result.content[0].text, /maximalist-integration-token/);
   assert.doesNotMatch(completed.result.content[0].text, /maximalist-integration-key/);
   assert.doesNotMatch(

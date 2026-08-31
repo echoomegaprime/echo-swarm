@@ -22,8 +22,22 @@ const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
 const MAX_WALL_SECONDS = 420;
 const REQUIRED_CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED";
-const REQUIRED_CORE_VERSION = "0.3.0";
-const REQUIRED_CORE_SHA = "d1e68e2f263d93648e494c5419852693fdd03fe0";
+const REQUIRED_CORE_VERSION = "0.4.0";
+const REQUIRED_CORE_SHA = "c7505746b578aae3dcd524ab2b218e86f257badd";
+const REQUIRED_CAPABILITY_PROFILE = "echo_full_read";
+const REQUIRED_CAPABILITY_IDS = [
+  "echo.arcanum.search",
+  "echo.arcanum.enrich",
+  "echo.knowledge.search",
+  "echo.wolfram.llm",
+  "echo.context.recall",
+  "echo.brain.search",
+  "echo.doctrine.search",
+  "echo.caps.search",
+  "echo.engine.query",
+  "echo.wolfram.health",
+  "echo.dr.phoenix_status",
+] as const;
 const RUN_ID = /^run_[A-Za-z0-9_-]{4,80}$/u;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{1,128}$/u;
 
@@ -43,6 +57,12 @@ const commonOutputSchema = {
     core_version: { type: "string" },
     core_sha: { type: "string" },
     provider_mode: { type: "string" },
+    capability_profile: { type: "string" },
+    capability_mode: { type: "string" },
+    capability_ready: { type: "boolean" },
+    ready_capability_count: { type: "integer" },
+    selected_capability_ids: { type: "array", items: { type: "string" } },
+    degraded_capability_ids: { type: "array", items: { type: "string" } },
     configured_seat_count: { type: "integer" },
     trinity_separate: { type: "boolean" },
     seats_fingerprint: { type: "string" },
@@ -70,7 +90,7 @@ export const MAXIMALIST_MCP_TOOLS = [
   {
     name: "swarm_maximalist_health",
     description:
-      "Check the live MAXIMALIST_RECONSTRUCTED Fusion Brain worker, active-run count, profile, and seat-registry fingerprint.",
+      "Check the live MAXIMALIST_RECONSTRUCTED Fusion Brain worker, active-run count, exact core identity, 40-seat registry, and governed Echo capability readiness.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     outputSchema: commonOutputSchema,
     annotations: readOnlyAnnotations,
@@ -78,7 +98,7 @@ export const MAXIMALIST_MCP_TOOLS = [
   {
     name: "swarm_maximalist_start",
     description:
-      "Start an asynchronous Maximalist Fusion Brain run. Returns a run_id immediately; poll swarm_maximalist_result until done. The brain performs independent first passes, finding-bus propagation, dynamic re-tasking, dissent preservation, evidence-weighted arbitration, Trinity fusion, recursive verification, and memory writeback.",
+      "Start an asynchronous Maximalist Fusion Brain run. Returns a run_id immediately; poll swarm_maximalist_result until done. The brain performs bounded Arcanum, Knowledge Forge, Wolfram, Echo memory/doctrine/catalog/engine, and Phoenix grounding before independent first passes, finding propagation, dynamic re-tasking, dissent preservation, evidence-weighted arbitration, separate Trinity fusion, recursive verification, and memory writeback.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -205,24 +225,32 @@ async function workerJson(path: string, init?: RequestInit): Promise<JsonRecord>
   }
 }
 
-function assertCoreIdentity(
-  body: JsonRecord,
-  options: { requireLive?: boolean } = {},
-): void {
+function assertCoreIdentity(body: JsonRecord, options: { requireLive?: boolean } = {}): void {
   const { requireLive = false } = options;
+  const selectedCapabilities = new Set(
+    Array.isArray(body.selected_capability_ids)
+      ? body.selected_capability_ids.filter((item): item is string => typeof item === "string")
+      : [],
+  );
   if (
     body.profile !== REQUIRED_CORE_PROFILE ||
     body.historical_parity !== false ||
     body.core_version !== REQUIRED_CORE_VERSION ||
     body.core_sha !== REQUIRED_CORE_SHA ||
     body.configured_seat_count !== 40 ||
-    body.trinity_separate !== true
+    body.trinity_separate !== true ||
+    body.capability_profile !== REQUIRED_CAPABILITY_PROFILE ||
+    body.credential_values_exposed !== false ||
+    REQUIRED_CAPABILITY_IDS.some((id) => !selectedCapabilities.has(id))
   ) {
     throw new SafeMaximalistError(
       "Maximalist Fusion worker identity does not match the certified reconstructed core.",
     );
   }
-  if (requireLive && (body.provider_mode !== "live" || body.ready !== true)) {
+  if (
+    requireLive &&
+    (body.provider_mode !== "live" || body.capability_mode !== "live" || body.ready !== true)
+  ) {
     throw new SafeMaximalistError(
       "Maximalist Fusion live execution is blocked by provider readiness.",
     );
@@ -247,7 +275,10 @@ function assertResultIdentity(body: JsonRecord): void {
     provenance.historical_parity !== false ||
     provenance.core_version !== REQUIRED_CORE_VERSION ||
     provenance.core_sha !== REQUIRED_CORE_SHA ||
-    provenance.trinity_separate !== true
+    provenance.trinity_separate !== true ||
+    provenance.provider_mode !== "live" ||
+    provenance.capability_profile !== REQUIRED_CAPABILITY_PROFILE ||
+    provenance.capability_mode !== "live"
   ) {
     throw new SafeMaximalistError(
       "Maximalist Fusion result provenance does not match the certified reconstructed core.",
@@ -411,6 +442,25 @@ function resultText(body: JsonRecord): string {
     lines.push("", "## Unresolved", "");
     for (const item of unresolved) if (typeof item === "string") lines.push(`- ${item}`);
   }
+  const capabilityResults = Array.isArray(result.capability_results)
+    ? result.capability_results.slice(0, REQUIRED_CAPABILITY_IDS.length)
+    : [];
+  if (capabilityResults.length) {
+    const completed = capabilityResults.filter(
+      (item) => asRecord(item).status === "completed",
+    ).length;
+    const degraded = capabilityResults.filter((item) => {
+      const status = asRecord(item).status;
+      return status !== "completed" && status !== "skipped";
+    }).length;
+    lines.push(
+      "",
+      "## Capability grounding",
+      "",
+      `- Completed: ${completed}`,
+      `- Degraded: ${degraded}`,
+    );
+  }
   return lines.join("\n");
 }
 
@@ -432,6 +482,7 @@ export async function handleMaximalistTool(
           `**Profile:** ${String(body.profile ?? "unknown")}`,
           `**Core:** ${String(body.core_version ?? "unknown")} @ ${String(body.core_sha ?? "unknown")}`,
           `**Provider mode:** ${String(body.provider_mode ?? "unknown")}`,
+          `**Capabilities:** ${String(body.capability_profile ?? "unknown")} (${String(body.ready_capability_count ?? "unknown")}/${REQUIRED_CAPABILITY_IDS.length} ready)`,
           `**Seats fingerprint:** ${String(body.seats_fingerprint ?? "unknown")}`,
           `**Active runs:** ${String(body.active_runs ?? "unknown")}`,
         ].join("\n"),

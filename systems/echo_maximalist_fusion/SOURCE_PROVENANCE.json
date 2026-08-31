@@ -5,13 +5,7 @@
   "source_remote": null,
   "retrieved_by": "QUENCH",
   "retrieved_at": "2026-08-29T14:27:03.5078803Z",
-  "excluded": [
-    ".git/",
-    ".venv/",
-    "runtime/",
-    "logs/",
-    "/etc/echo/echo-fusion-worker.env"
-  ],
+  "excluded": [".git/", ".venv/", "runtime/", "logs/", "/etc/echo/echo-fusion-worker.env"],
   "service": {
     "unit": "echo-fusion-worker.service",
     "working_directory": "/home/forge/echo-maximalist-swarm",
@@ -26,8 +20,8 @@
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-        "quench_sha256": "9d51a4352d6c322f97dd52ad189d3ab38d307cc50fc05a38233674628b797653",
-        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v03 profile receives bounded caller context, reports exact core identity, and can read completed durable state after process restart"
+        "quench_sha256": "e71fed282484aa4cecc2d03da6129abc9ad0374add09a8cb9b40da5b8ac28336",
+        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v03 profile receives bounded caller context, reports exact core identity, capability readiness, and completed durable state after process restart"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -44,16 +38,16 @@
     },
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
-        "quench_sha256": "00069f57b7f2b570836916f41eb5a51781c7cf12030f8856f4593c9d50f705b6",
-        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.3.0 package to the existing asynchronous worker contract without modifying the recovered echo_fusion engine"
+        "quench_sha256": "34c07c18b656caf268bb724df7df560a1ee321e5f1106106dc9e5243ca0790ce",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.4.0 package and its governed Echo SDK capability profile to the existing asynchronous worker contract without modifying the recovered echo_fusion engine"
       },
       "tests/test_portable_core.py": {
-        "quench_sha256": "4ea6d2a18c0d02a806b3d28e1e1ff5e86bc70210cfda8153449ebf57d383809f",
-        "changes": "verifies artifact hash, 40-seat and separate-Trinity invariants, worker round-trip, non-parity provenance, and restart readback"
+        "quench_sha256": "f3f6af89ae7b9258a2d61a9359925dc158641c8ed78ca740e7e6b3bc48d13a56",
+        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, bounded repeated runs, and restart no-replay"
       },
-      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.3.0-py3-none-any.whl": {
-        "source_revision": "d1e68e2f263d93648e494c5419852693fdd03fe0",
-        "sha256": "d9372efef0e671b3bc6b082ec3d20d2aeaf1210f16aab91199e690b07bb1047d"
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.4.0-py3-none-any.whl": {
+        "source_revision": "c7505746b578aae3dcd524ab2b218e86f257badd",
+        "sha256": "b144354dc5021937d6d280eeb19cbd0cd89fd2830ea37eee40ff13bcc109aa6c"
       }
     }
   },

@@ -1,4 +1,4 @@
-"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.3.0.
+"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.4.0.
 
 The portable core is additive: the recovered ``echo_fusion`` engine remains
 untouched and available under its existing profiles. Selecting
@@ -16,14 +16,18 @@ from maximalist_reconstructed import (
     ANVIL_OLLAMA_DEFAULT_BASE_URL,
     AnvilOllamaAdapter,
     BudgetPolicy,
+    CapabilityCatalog,
     CostTable,
     DeterministicFakeProvider,
+    EchoSDKCapabilityAdapter,
     FusionEngine,
     JsonFileMemoryAdapter,
     JsonRunStateStore,
     ProviderRegistry,
     anvil_ollama_registry,
+    build_deterministic_capability_orchestrator,
     build_deterministic_registry,
+    build_live_capability_orchestrator,
     build_preflight_report,
     default_registry,
 )
@@ -31,10 +35,40 @@ from maximalist_reconstructed import (
 from .factory import register_profile
 
 CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED"
-CORE_VERSION = "0.3.0"
-CORE_SHA = "d1e68e2f263d93648e494c5419852693fdd03fe0"
+CORE_VERSION = "0.4.0"
+CORE_SHA = "c7505746b578aae3dcd524ab2b218e86f257badd"
 HISTORICAL_PARITY = False
 SUPPORTED_RUNTIMES = frozenset({"anvil_live", "deterministic_test"})
+DEFAULT_CAPABILITY_PROFILE = "echo_full_read"
+DEFAULT_SDK_BASE_URL = "http://127.0.0.1:8002"
+
+
+def _runtime_sdk_key() -> str:
+    """Resolve a credential at call time without retaining or serializing it."""
+    direct = os.environ.get("ECHO_SDK_API_KEY", "").strip()
+    if direct:
+        return direct
+    key_path = Path(
+        os.environ.get(
+            "FUSION_SOVEREIGN_KEY_FILE",
+            "/home/forge/.echo_sovereign_key",
+        )
+    )
+    try:
+        with key_path.open("r", encoding="utf-8") as handle:
+            for index, line in enumerate(handle):
+                if index >= 256:
+                    break
+                name, separator, value = line.partition("=")
+                if (
+                    separator
+                    and name.strip() in {"SOVEREIGN_KEY", "ECHO_API_KEY", "ECHO_SDK_API_KEY"}
+                    and value.strip()
+                ):
+                    return value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
 
 
 @dataclass(slots=True)
@@ -83,6 +117,8 @@ class PortableCoreEngine:
         state_dir: str | Path,
         memory_file: str | Path | None = None,
         anvil_base_url: str | None = None,
+        capability_profile: str | None = None,
+        sdk_base_url: str | None = None,
     ) -> None:
         if runtime not in SUPPORTED_RUNTIMES:
             raise ValueError(
@@ -91,6 +127,17 @@ class PortableCoreEngine:
         self.runtime = runtime
         self.state_store = JsonRunStateStore(state_dir)
         self.memory = JsonFileMemoryAdapter(memory_file or Path(state_dir) / "memory.json")
+        self.capability_catalog = CapabilityCatalog.load()
+        selected_profile = (
+            capability_profile
+            or os.environ.get("MAXIMALIST_CAPABILITY_PROFILE", "").strip()
+            or DEFAULT_CAPABILITY_PROFILE
+        )
+        capability_limit = self._positive_int(
+            os.environ.get("MAXIMALIST_MAX_CAPABILITY_CALLS"),
+            12,
+            32,
+        )
         if runtime == "deterministic_test":
             self.registry = default_registry()
             names = {
@@ -102,6 +149,13 @@ class PortableCoreEngine:
                 raise TypeError("deterministic registry did not return its explicit test provider")
             self.costs = CostTable(free_providers=names)
             self.provider_mode = "deterministic_test"
+            self.capabilities, self.fake_capabilities = (
+                build_deterministic_capability_orchestrator(
+                    self.capability_catalog,
+                    selected_profile,
+                    max_calls=capability_limit,
+                )
+            )
         else:
             self.registry = anvil_ollama_registry()
             self.providers = ProviderRegistry()
@@ -117,6 +171,20 @@ class PortableCoreEngine:
             )
             self.costs = CostTable(free_providers={"anvil_ollama"})
             self.provider_mode = "live"
+            self.fake_capabilities = None
+            sdk_adapter = EchoSDKCapabilityAdapter(
+                sdk_base_url
+                or os.environ.get("MAXIMALIST_SDK_BASE_URL", "").strip()
+                or os.environ.get("FUSION_GATE_BASE", "").strip()
+                or DEFAULT_SDK_BASE_URL,
+                api_key_loader=_runtime_sdk_key,
+            )
+            self.capabilities = build_live_capability_orchestrator(
+                self.capability_catalog,
+                selected_profile,
+                adapter=sdk_adapter,
+                max_calls=capability_limit,
+            )
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -129,6 +197,9 @@ class PortableCoreEngine:
             "runtime": self.runtime,
             "configured_seat_count": len(self.registry.seats),
             "trinity_separate": True,
+            "capability_profile": self.capabilities.profile,
+            "capability_mode": self.capabilities.mode,
+            "selected_capability_ids": self.capabilities.selected_ids,
         }
 
     async def health_metadata(self) -> dict[str, Any]:
@@ -141,12 +212,23 @@ class PortableCoreEngine:
         ready = report.planner_ready and bool(report.ready_swarm_seats) and bool(
             report.ready_trinity_seats
         )
+        capability_preflight = await self.capabilities.preflight()
+        capability_states = capability_preflight["capabilities"]
+        capability_degraded = [
+            item["capability_id"]
+            for item in capability_states
+            if item["status"] != "ready"
+        ]
         return {
             **self.metadata,
             "ready": ready,
             "planner_ready": report.planner_ready,
             "ready_swarm_seats": len(report.ready_swarm_seats),
             "ready_trinity_seats": len(report.ready_trinity_seats),
+            "capability_ready": not capability_degraded,
+            "ready_capability_count": len(capability_states) - len(capability_degraded),
+            "degraded_capability_ids": capability_degraded,
+            "capability_preflight": capability_preflight,
             "credential_values_exposed": False,
         }
 
@@ -218,6 +300,7 @@ class PortableCoreEngine:
             provider_mode=self.provider_mode,
             budget_policy=policy,
             cost_table=self.costs,
+            capabilities=self.capabilities,
         )
 
     async def drive_state(self, state: PortableRunState) -> PortableResult:

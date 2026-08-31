@@ -1,6 +1,6 @@
-# MAXIMALIST_RECONSTRUCTED 0.3.0 portable core
+# MAXIMALIST_RECONSTRUCTED 0.4.0 portable core
 
-This directory binds the Echo Swarm plugin to the standalone portable core at exact source revision `d1e68e2f263d93648e494c5419852693fdd03fe0`.
+This directory binds the Echo Swarm plugin to the standalone portable core at exact source revision `c7505746b578aae3dcd524ab2b218e86f257badd`.
 
 The profile remains `MAXIMALIST_RECONSTRUCTED` and `historical_parity` remains `false`. The package does not claim recovery of, or parity with, the historical 40-LLM implementation.
 
@@ -15,6 +15,8 @@ The vendored wheel is pure Python, has no runtime package dependencies, and is v
 
 The production-oriented setting is `anvil_live`. Deterministic mode is reported in health and result provenance and is never an implicit fallback.
 
+The adapter defaults to the governed `echo_full_read` capability profile. It gathers bounded evidence from Arcanum search/enrichment, Knowledge Forge, Wolfram, Echo context/brain/doctrine/catalog/engine-library, and Phoenix status before decomposition. Set `MAXIMALIST_CAPABILITY_PROFILE=knowledge` for the smaller knowledge profile or `off` to disable capability calls. Live mode uses the Echo SDK gate and runtime credential references; deterministic capability output exists only under `deterministic_test`.
+
 The worker remains loopback-only. Echo Swarm continues to reject caller-provided worker origins and now validates the core profile, non-parity flag, seat count, separate Trinity flag, version, and source SHA before it starts or resumes a run.
 
 ## Local verification
@@ -22,7 +24,7 @@ The worker remains loopback-only. Echo Swarm continues to reject caller-provided
 Add the wheel and worker source to `PYTHONPATH`, then run the portable-core tests with the same Python environment used for the existing Fusion Worker tests:
 
 ```powershell
-$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.3.0-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
+$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.4.0-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
 python -m pytest systems\echo_maximalist_fusion\tests\test_portable_core.py -q
 ```
 

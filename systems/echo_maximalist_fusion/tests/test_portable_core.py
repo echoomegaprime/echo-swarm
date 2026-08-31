@@ -1,4 +1,4 @@
-"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.3.0 adapter."""
+"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.4.0 adapter."""
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +16,7 @@ CORE_WHEEL = (
     / "systems"
     / "maximalist_reconstructed_core"
     / "vendor"
-    / "maximalist_reconstructed-0.3.0-py3-none-any.whl"
+    / "maximalist_reconstructed-0.4.0-py3-none-any.whl"
 )
 WORKER_SRC = REPO_ROOT / "systems" / "echo_maximalist_fusion" / "src"
 sys.path.insert(0, str(CORE_WHEEL))
@@ -31,6 +31,20 @@ from echo_fusion_worker.portable_core import (  # noqa: E402
     PortableCoreEngine,
 )
 
+EXPECTED_CAPABILITY_IDS = [
+    "echo.arcanum.search",
+    "echo.arcanum.enrich",
+    "echo.knowledge.search",
+    "echo.wolfram.llm",
+    "echo.context.recall",
+    "echo.brain.search",
+    "echo.doctrine.search",
+    "echo.caps.search",
+    "echo.engine.query",
+    "echo.wolfram.health",
+    "echo.dr.phoenix_status",
+]
+
 
 def _client(app):
     return httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
@@ -41,7 +55,7 @@ def test_vendored_wheel_is_present_and_sha_bound() -> None:
 
     assert CORE_WHEEL.is_file()
     assert hashlib.sha256(CORE_WHEEL.read_bytes()).hexdigest() == (
-        "d9372efef0e671b3bc6b082ec3d20d2aeaf1210f16aab91199e690b07bb1047d"
+        "b144354dc5021937d6d280eeb19cbd0cd89fd2830ea37eee40ff13bcc109aa6c"
     )
 
 
@@ -56,10 +70,14 @@ def test_anvil_runtime_has_40_seats_and_separate_trinity(tmp_path: Path) -> None
         "runtime": "anvil_live",
         "configured_seat_count": 40,
         "trinity_separate": True,
+        "capability_profile": "echo_full_read",
+        "capability_mode": "live",
+        "selected_capability_ids": EXPECTED_CAPABILITY_IDS,
     }
     assert len(runtime.registry.seats) == 40
     assert len(runtime.registry.trinity) == 3
     assert not ({seat.id for seat in runtime.registry.seats} & {seat.id for seat in runtime.registry.trinity})
+    assert runtime.fake_capabilities is None
 
 
 def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
@@ -79,6 +97,13 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
             assert h["trinity_separate"] is True
             assert h["provider_mode"] == "deterministic_test"
             assert h["ready"] is True
+            assert h["capability_profile"] == "echo_full_read"
+            assert h["capability_mode"] == "deterministic_test"
+            assert h["capability_ready"] is True
+            assert h["ready_capability_count"] == 11
+            assert h["degraded_capability_ids"] == []
+            assert h["selected_capability_ids"] == EXPECTED_CAPABILITY_IDS
+            assert h["capability_preflight"]["credential_values_exposed"] is False
 
             response = await client.post(
                 "/run",
@@ -104,6 +129,9 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
             assert result["provenance"]["trinity_separate"] is True
             assert result["provenance"]["configured_seat_count"] == 40
             assert result["provenance"]["deterministic_test_output"] is True
+            assert result["provenance"]["capability_profile"] == "echo_full_read"
+            assert result["provenance"]["capability_mode"] == "deterministic_test"
+            assert len(result["capability_results"]) == 11
 
             selftest = await client.post("/selftest")
             assert selftest.status_code == 200, selftest.text
@@ -117,6 +145,12 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
     assert recovered is not None
     assert recovered["done"] is True
     assert recovered["result"]["answer"] == result["answer"]
+    assert restarted.fake_capabilities is not None
+    assert restarted.fake_capabilities.calls == []
+
+    resumed = asyncio.run(restarted.resume(run_id))
+    assert resumed.answer == result["answer"]
+    assert restarted.fake_capabilities.calls == []
 
 
 def test_unknown_runtime_fails_closed(tmp_path: Path) -> None:

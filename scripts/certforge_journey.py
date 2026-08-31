@@ -47,7 +47,7 @@ CRITICAL_SURFACES = (
     "systems/echo_maximalist_fusion/src/echo_fusion_worker/app.py",
     "systems/echo_maximalist_fusion/src/echo_fusion_worker/portable_core.py",
     "systems/maximalist_reconstructed_core/SOURCE_PROVENANCE.json",
-    "systems/maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.3.0-py3-none-any.whl",
+    "systems/maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.4.0-py3-none-any.whl",
 )
 
 JSON_SURFACES = (
@@ -186,9 +186,9 @@ def validate_portable_core(provenance: object) -> None:
         fail("portable core profile drifted")
     if provenance.get("historical_parity") is not False:
         fail("portable core must not claim historical parity")
-    if provenance.get("version") != "0.3.0":
+    if provenance.get("version") != "0.4.0":
         fail("portable core version drifted")
-    if provenance.get("source_revision") != "d1e68e2f263d93648e494c5419852693fdd03fe0":
+    if provenance.get("source_revision") != "c7505746b578aae3dcd524ab2b218e86f257badd":
         fail("portable core source revision drifted")
     artifact = provenance.get("artifact")
     if not isinstance(artifact, dict):

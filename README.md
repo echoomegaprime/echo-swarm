@@ -68,14 +68,16 @@ The MCP catalog now includes `swarm_certificate_status` and `swarm_certificate_a
 
 ### Maximalist Fusion Brain
 
-The MCP endpoint also exposes the asynchronous `MAXIMALIST_RECONSTRUCTED` workflow backed by the loopback Fusion worker. The clean FORGE source tree for the earlier worker and its engine remains preserved at [`systems/echo_maximalist_fusion`](systems/echo_maximalist_fusion), bound to its source Git SHA and per-file hashes. The additive [`systems/maximalist_reconstructed_core`](systems/maximalist_reconstructed_core) integration binds the new portable 0.3.0 core to exact source SHA `d1e68e2f263d93648e494c5419852693fdd03fe0` without silently replacing that recovered source:
+The MCP endpoint also exposes the asynchronous `MAXIMALIST_RECONSTRUCTED` workflow backed by the loopback Fusion worker. The clean FORGE source tree for the earlier worker and its engine remains preserved at [`systems/echo_maximalist_fusion`](systems/echo_maximalist_fusion), bound to its source Git SHA and per-file hashes. The additive [`systems/maximalist_reconstructed_core`](systems/maximalist_reconstructed_core) integration binds the portable 0.4.0 core to exact source SHA `c7505746b578aae3dcd524ab2b218e86f257badd` without silently replacing that recovered source:
 
-1. `swarm_maximalist_health` verifies `MAXIMALIST_RECONSTRUCTED`, `historical_parity: false`, core version/SHA, 40 seats, separate Trinity, and provider readiness.
+1. `swarm_maximalist_health` verifies `MAXIMALIST_RECONSTRUCTED`, `historical_parity: false`, core version/SHA, 40 seats, separate Trinity, provider readiness, and the governed 11-capability profile.
 2. `swarm_maximalist_start` rechecks that exact live identity, starts a bounded deep-fusion run, and returns a `run_id` immediately.
 3. `swarm_maximalist_result` polls that run and returns a chat-ready fused answer with confidence, preserved dissent, unresolved uncertainty, and structured provenance.
 4. `swarm_maximalist_resume` resumes persisted run state after a worker interruption.
 
 Set `FUSION_WORKER_BASE` to the worker's loopback origin (default `http://127.0.0.1:8157`). Non-loopback origins and caller-supplied worker addresses are rejected. Select the new adapter with `FUSION_PROFILE=reconstructed_v03` and explicitly set `MAXIMALIST_RUNTIME=anvil_live`; `deterministic_test` is an offline verification mode and the plugin will not accept it for a live start or resume.
+
+`MAXIMALIST_CAPABILITY_PROFILE=echo_full_read` is the integration default. Live capability calls use `MAXIMALIST_SDK_BASE_URL` (falling back to the existing `FUSION_GATE_BASE`) and a runtime-only Echo credential reference. Capability scope or availability failures remain visible and degrade independently; they never trigger a fake live fallback.
 
 ### Recovered Echo Swarm Brain
 
