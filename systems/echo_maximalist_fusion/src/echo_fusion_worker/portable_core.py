@@ -1,4 +1,4 @@
-"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.5.2.
+"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.5.3.
 
 The portable core is additive: the recovered ``echo_fusion`` engine remains
 untouched and available under its existing profiles. Selecting
@@ -32,12 +32,13 @@ from maximalist_reconstructed import (
     build_preflight_report,
     default_registry,
 )
+from maximalist_reconstructed.providers import HTTPJSONTransport
 
 from .factory import register_profile
 
 CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED"
-CORE_VERSION = "0.5.2"
-CORE_SHA = "a0bae949d4c63b63feb0db86cefb49aaea231b88"
+CORE_VERSION = "0.5.3"
+CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f"
 HISTORICAL_PARITY = False
 SUPPORTED_RUNTIMES = frozenset({"anvil_live", "deterministic_test"})
 SUPPORTED_ROUTING_POLICIES = frozenset(
@@ -211,7 +212,14 @@ class PortableCoreEngine:
                         anvil_base_url
                         or os.environ.get("ANVIL_OLLAMA_BASE_URL", "").strip()
                         or ANVIL_OLLAMA_DEFAULT_BASE_URL
-                    )
+                    ),
+                    transport=HTTPJSONTransport(
+                        timeout_seconds=self._positive_float(
+                            os.environ.get("MAXIMALIST_REQUEST_TIMEOUT_SECONDS"),
+                            180.0,
+                            300.0,
+                        )
+                    ),
                 ),
             )
             self.costs = CostTable(free_providers={"anvil_ollama"})

@@ -1,17 +1,17 @@
 {
   "profile": "MAXIMALIST_RECONSTRUCTED",
   "historical_parity": false,
-  "version": "0.5.2",
+  "version": "0.5.3",
   "source_repository": "maximalist-reconstructed",
   "source_branch": "agent/trinity-anvil-output-v06",
-  "source_revision": "a0bae949d4c63b63feb0db86cefb49aaea231b88",
+  "source_revision": "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f",
   "artifact": {
-    "path": "vendor/maximalist_reconstructed-0.5.2-py3-none-any.whl",
-    "bytes": 71758,
-    "sha256": "48b2778a6bd730fbcb8d18013347ba4da6c3f7282950b7eade4e6446ce90f53a"
+    "path": "vendor/maximalist_reconstructed-0.5.3-py3-none-any.whl",
+    "bytes": 72374,
+    "sha256": "defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5"
   },
   "acceptance": {
-    "unit_tests_passed": 85,
+    "unit_tests_passed": 86,
     "clean_install_cli": "passed",
     "configured_seat_count": 40,
     "configured_capability_count": 11,
@@ -24,7 +24,9 @@
     "routing_receipt": "passed",
     "performance_persistence": "passed",
     "capability_restart_replay": "passed",
-    "live_sdk_activation": "not_performed"
+    "anvil_context_limit_readback": 32768,
+    "transport_timeout_alignment": "passed",
+    "live_sdk_activation": "0.5.2 capability routes individually proven; fresh 0.5.3 end-to-end acceptance pending"
   },
   "integration_boundary": "The wheel is an additive portable core. It does not replace or rewrite systems/echo_maximalist_fusion provenance-locked source, and it does not claim historical parity."
 }

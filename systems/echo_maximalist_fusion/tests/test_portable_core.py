@@ -1,4 +1,4 @@
-"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.5.2 adapter."""
+"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.5.3 adapter."""
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +16,7 @@ CORE_WHEEL = (
     / "systems"
     / "maximalist_reconstructed_core"
     / "vendor"
-    / "maximalist_reconstructed-0.5.2-py3-none-any.whl"
+    / "maximalist_reconstructed-0.5.3-py3-none-any.whl"
 )
 WORKER_SRC = REPO_ROOT / "systems" / "echo_maximalist_fusion" / "src"
 sys.path.insert(0, str(CORE_WHEEL))
@@ -56,7 +56,7 @@ def test_vendored_wheel_is_present_and_sha_bound() -> None:
 
     assert CORE_WHEEL.is_file()
     assert hashlib.sha256(CORE_WHEEL.read_bytes()).hexdigest() == (
-        "48b2778a6bd730fbcb8d18013347ba4da6c3f7282950b7eade4e6446ce90f53a"
+        "defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5"
     )
 
 
@@ -86,6 +86,17 @@ def test_anvil_runtime_has_40_seats_and_separate_trinity(tmp_path: Path) -> None
     assert len(runtime.registry.trinity) == 3
     assert not ({seat.id for seat in runtime.registry.seats} & {seat.id for seat in runtime.registry.trinity})
     assert runtime.fake_capabilities is None
+
+
+def test_anvil_transport_timeout_and_context_are_explicitly_bounded(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("MAXIMALIST_REQUEST_TIMEOUT_SECONDS", "240")
+    runtime = PortableCoreEngine(runtime="anvil_live", state_dir=tmp_path)
+    adapter = runtime.providers.adapter_for("anvil_ollama")
+    assert adapter is not None
+    assert adapter.transport.timeout_seconds == 240
+    assert adapter.num_ctx == 32768
 
 
 def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:

@@ -204,7 +204,7 @@ def _build_from_env() -> FastAPI:
     if profile == "live":
         import echo_fusion_worker.live_adapters  # noqa: F401 — registers the "live" profile
     elif profile == "reconstructed_v05":
-        import echo_fusion_worker.portable_core  # noqa: F401 — exact 0.5.2 portable core
+        import echo_fusion_worker.portable_core  # noqa: F401 — exact 0.5.3 portable core
     cfg = load_seats(seats_path)   # fail-closed: bad/missing config aborts boot
     fingerprint = seats_fingerprint(cfg)
     log.info("boot seats=%s profile=%s fingerprint=%s", seats_path, profile, fingerprint)
