@@ -1,4 +1,4 @@
-"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.5.0 adapter."""
+"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.5.1 adapter."""
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +16,7 @@ CORE_WHEEL = (
     / "systems"
     / "maximalist_reconstructed_core"
     / "vendor"
-    / "maximalist_reconstructed-0.5.0-py3-none-any.whl"
+    / "maximalist_reconstructed-0.5.1-py3-none-any.whl"
 )
 WORKER_SRC = REPO_ROOT / "systems" / "echo_maximalist_fusion" / "src"
 sys.path.insert(0, str(CORE_WHEEL))
@@ -56,7 +56,7 @@ def test_vendored_wheel_is_present_and_sha_bound() -> None:
 
     assert CORE_WHEEL.is_file()
     assert hashlib.sha256(CORE_WHEEL.read_bytes()).hexdigest() == (
-        "8ba752e781f91599e16ef9609998306a85e3948aaa77f707675e9f279ba2d040"
+        "3429b32525a1721077d57dea250cffa081adbb6e20abf193ca7cc4971e956cb5"
     )
 
 

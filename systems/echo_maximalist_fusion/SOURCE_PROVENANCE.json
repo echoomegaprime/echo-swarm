@@ -20,7 +20,7 @@
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-        "quench_sha256": "d6a29cdf1faf95680ab9a8db899fc063a4d81d817c71abac47312f03cbbef117",
+        "quench_sha256": "a4462dfbabb7de2b751c7dcee98b83d1741ebf1dda41379702767ceddbb04ed4",
         "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, and completed durable state after process restart"
       },
       "src/echo_fusion/schemas.py": {
@@ -38,11 +38,11 @@
     },
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
-        "quench_sha256": "f542dd36ce05d9cca5f24160dc5c6ead862ce2220f81f66ea6439ba5b487970a",
-        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.0 package, governed Echo SDK capability profile, explicit routing policies, restart-safe performance history, and explicit fallback graph to the asynchronous worker contract without modifying the recovered echo_fusion engine"
+        "quench_sha256": "60f1c9c5f014e6f42036b031db2157f35650fb315d8f5506f7448749ca4358a2",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.1 package, governed Echo SDK capability profile, explicit routing policies, restart-safe performance history, explicit fallback graph, and phase-specific ANVIL Trinity output contract to the asynchronous worker contract without modifying the recovered echo_fusion engine"
       },
       "tests/test_portable_core.py": {
-        "quench_sha256": "87541a02d692966dbe7e1f5728f1ed895b96704bf09460c26940dffc2e573e35",
+        "quench_sha256": "abe3abac62934949deb5cf701222cd51941923e4aefc30b49e6926bfcc8d6ba6",
         "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, and restart no-replay"
       },
       "tests/test_service_unit.py": {
@@ -53,9 +53,9 @@
         "quench_sha256": "d49945ac2c88927e0abf38ed32d1a31b12c2e79b81942fed46dd7952b64bbbee",
         "changes": "selects the v05 adapter and isolated restart-safe state, memory, performance, and explicit full-40 routing defaults"
       },
-      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.0-py3-none-any.whl": {
-        "source_revision": "8b65901d8f037374ad48cbb7ee4bf488d1f1327c",
-        "sha256": "8ba752e781f91599e16ef9609998306a85e3948aaa77f707675e9f279ba2d040"
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.1-py3-none-any.whl": {
+        "source_revision": "948001e1a79dd828c6d92b8a4b646abb266ed003",
+        "sha256": "3429b32525a1721077d57dea250cffa081adbb6e20abf193ca7cc4971e956cb5"
       }
     }
   },

@@ -1,6 +1,6 @@
-# MAXIMALIST_RECONSTRUCTED 0.5.0 portable core
+# MAXIMALIST_RECONSTRUCTED 0.5.1 portable core
 
-This directory binds the Echo Swarm plugin to the standalone portable core at exact source revision `8b65901d8f037374ad48cbb7ee4bf488d1f1327c`.
+This directory binds the Echo Swarm plugin to the standalone portable core at exact source revision `948001e1a79dd828c6d92b8a4b646abb266ed003`.
 
 The profile remains `MAXIMALIST_RECONSTRUCTED` and `historical_parity` remains `false`. Recovered historical material is retained as reference evidence, but this package does not claim parity with the historical 40-LLM implementation.
 
@@ -28,7 +28,7 @@ The worker remains loopback-only. Echo Swarm rejects caller-provided worker orig
 Add the wheel and worker source to `PYTHONPATH`, then run the portable-core tests with the same Python environment used for the existing Fusion Worker tests:
 
 ```powershell
-$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.5.0-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
+$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.5.1-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
 python -m pytest systems\echo_maximalist_fusion\tests\test_portable_core.py -q
 ```
 
