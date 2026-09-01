@@ -1,4 +1,4 @@
-"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.5.3 adapter."""
+"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.6.0 adapter."""
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +16,7 @@ CORE_WHEEL = (
     / "systems"
     / "maximalist_reconstructed_core"
     / "vendor"
-    / "maximalist_reconstructed-0.5.3-py3-none-any.whl"
+    / "maximalist_reconstructed-0.6.0-py3-none-any.whl"
 )
 WORKER_SRC = REPO_ROOT / "systems" / "echo_maximalist_fusion" / "src"
 sys.path.insert(0, str(CORE_WHEEL))
@@ -44,6 +44,7 @@ EXPECTED_CAPABILITY_IDS = [
     "echo.engine.query",
     "echo.wolfram.health",
     "echo.dr.phoenix_status",
+    "echo.personality.family_consult",
 ]
 
 
@@ -56,7 +57,7 @@ def test_vendored_wheel_is_present_and_sha_bound() -> None:
 
     assert CORE_WHEEL.is_file()
     assert hashlib.sha256(CORE_WHEEL.read_bytes()).hexdigest() == (
-        "defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5"
+        "8dbd6519d7f7a093233145cccd91f92c01c8d58133c6801846dc4688318ea544"
     )
 
 
@@ -78,9 +79,11 @@ def test_anvil_runtime_has_40_seats_and_separate_trinity(tmp_path: Path) -> None
         "explicit_fallback_configured": False,
         "claim_topology": True,
         "coverage_telemetry": True,
-        "capability_profile": "echo_full_read",
+        "capability_profile": "echo_full_read_personality",
         "capability_mode": "live",
         "selected_capability_ids": EXPECTED_CAPABILITY_IDS,
+        "personality_forge_integration": "signed_live",
+        "max_wall_seconds": 600.0,
     }
     assert len(runtime.registry.seats) == 40
     assert len(runtime.registry.trinity) == 3
@@ -102,7 +105,7 @@ def test_anvil_transport_timeout_and_context_are_explicitly_bounded(
 def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
     async def exercise() -> tuple[str, dict]:
         runtime = PortableCoreEngine(runtime="deterministic_test", state_dir=tmp_path)
-        app = create_app(engine=runtime, profile="reconstructed_v05", fingerprint="portable-v05")
+        app = create_app(engine=runtime, profile="reconstructed_v06", fingerprint="portable-v06")
 
         async with _client(app) as client:
             health = await client.get("/health")
@@ -116,12 +119,14 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
             assert h["trinity_separate"] is True
             assert h["provider_mode"] == "deterministic_test"
             assert h["ready"] is True
-            assert h["capability_profile"] == "echo_full_read"
+            assert h["capability_profile"] == "echo_full_read_personality"
             assert h["capability_mode"] == "deterministic_test"
             assert h["capability_ready"] is True
-            assert h["ready_capability_count"] == 11
+            assert h["ready_capability_count"] == 12
             assert h["degraded_capability_ids"] == []
             assert h["selected_capability_ids"] == EXPECTED_CAPABILITY_IDS
+            assert h["personality_forge_integration"] == "deterministic_test"
+            assert h["max_wall_seconds"] == 600.0
             assert h["capability_preflight"]["credential_values_exposed"] is False
 
             response = await client.post(
@@ -148,7 +153,7 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
             assert result["provenance"]["trinity_separate"] is True
             assert result["provenance"]["configured_seat_count"] == 40
             assert result["provenance"]["deterministic_test_output"] is True
-            assert result["provenance"]["capability_profile"] == "echo_full_read"
+            assert result["provenance"]["capability_profile"] == "echo_full_read_personality"
             assert result["provenance"]["capability_mode"] == "deterministic_test"
             assert result["provenance"]["routing"]["policy"] == "full_40"
             assert len(result["provenance"]["routing"]["routing_fingerprint"]) == 64
@@ -158,12 +163,12 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
             assert result["claim_clusters"]
             assert result["seat_contributions"]
             assert result["performance_writes"]
-            assert len(result["capability_results"]) == 11
+            assert len(result["capability_results"]) == 12
 
             selftest = await client.post("/selftest")
             assert selftest.status_code == 200, selftest.text
             assert selftest.json()["ok"] is True
-            assert selftest.json()["profile"] == "reconstructed_v05"
+            assert selftest.json()["profile"] == "reconstructed_v06"
             return run_id, result
 
     run_id, result = asyncio.run(exercise())
@@ -228,3 +233,19 @@ def test_reconstructed_profile_requires_explicit_runtime(monkeypatch, tmp_path: 
     monkeypatch.setenv("MAXIMALIST_STATE_DIR", os.fspath(tmp_path))
     with pytest.raises(RuntimeError, match="MAXIMALIST_RUNTIME is required"):
         _build_portable_engine({})
+
+
+def test_max_wall_seconds_is_operator_bounded(monkeypatch, tmp_path: Path) -> None:
+    from echo_fusion_worker.factory import clamp_budget
+
+    monkeypatch.setenv("MAXIMALIST_MAX_WALL_SECONDS", "720")
+    runtime = PortableCoreEngine(runtime="deterministic_test", state_dir=tmp_path)
+    assert runtime.metadata["max_wall_seconds"] == 720.0
+    assert runtime._policy(Budget(max_wall_s=800)).deadline_seconds == 720.0
+    assert clamp_budget(Budget(max_wall_s=800)).max_wall_s == 720.0
+
+    monkeypatch.setenv("MAXIMALIST_MAX_WALL_SECONDS", "5000")
+    capped = PortableCoreEngine(runtime="deterministic_test", state_dir=tmp_path / "capped")
+    assert capped.metadata["max_wall_seconds"] == 900.0
+    assert capped._policy(Budget(max_wall_s=5000)).deadline_seconds == 900.0
+    assert clamp_budget(Budget(max_wall_s=5000)).max_wall_s == 900.0

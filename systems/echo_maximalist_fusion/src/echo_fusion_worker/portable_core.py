@@ -1,8 +1,8 @@
-"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.5.3.
+"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.6.0.
 
 The portable core is additive: the recovered ``echo_fusion`` engine remains
 untouched and available under its existing profiles. Selecting
-``FUSION_PROFILE=reconstructed_v05`` opts into this adapter explicitly.
+``FUSION_PROFILE=reconstructed_v06`` opts into this adapter explicitly.
 """
 from __future__ import annotations
 
@@ -35,10 +35,11 @@ from maximalist_reconstructed import (
 from maximalist_reconstructed.providers import HTTPJSONTransport
 
 from .factory import register_profile
+from .personality_forge import PersonalityForgeCapabilityAdapter
 
 CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED"
-CORE_VERSION = "0.5.3"
-CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f"
+CORE_VERSION = "0.6.0"
+CORE_SHA = "efc85e8cb6934b7edb0e28a44ddcab2d709ebb19"
 HISTORICAL_PARITY = False
 SUPPORTED_RUNTIMES = frozenset({"anvil_live", "deterministic_test"})
 SUPPORTED_ROUTING_POLICIES = frozenset(
@@ -53,8 +54,10 @@ SUPPORTED_ROUTING_POLICIES = frozenset(
     }
 )
 DEFAULT_ROUTING_POLICY = "full_40"
-DEFAULT_CAPABILITY_PROFILE = "echo_full_read"
+DEFAULT_CAPABILITY_PROFILE = "echo_full_read_personality"
 DEFAULT_SDK_BASE_URL = "http://127.0.0.1:8002"
+DEFAULT_MAX_WALL_SECONDS = 600.0
+MAX_WALL_SECONDS_CEILING = 900.0
 
 
 def _runtime_sdk_key() -> str:
@@ -236,6 +239,9 @@ class PortableCoreEngine:
                 self.capability_catalog,
                 selected_profile,
                 adapter=sdk_adapter,
+                additional_adapters={
+                    "personality_forge": PersonalityForgeCapabilityAdapter.from_environment()
+                },
                 max_calls=capability_limit,
             )
         if selected_fallback_config:
@@ -262,6 +268,16 @@ class PortableCoreEngine:
             "capability_profile": self.capabilities.profile,
             "capability_mode": self.capabilities.mode,
             "selected_capability_ids": self.capabilities.selected_ids,
+            "personality_forge_integration": (
+                "signed_live"
+                if self.provider_mode == "live"
+                and "echo.personality.family_consult" in self.capabilities.selected_ids
+                else "deterministic_test"
+                if self.provider_mode == "deterministic_test"
+                and "echo.personality.family_consult" in self.capabilities.selected_ids
+                else "disabled"
+            ),
+            "max_wall_seconds": self._configured_max_wall_seconds(),
         }
 
     async def health_metadata(self) -> dict[str, Any]:
@@ -323,6 +339,13 @@ class PortableCoreEngine:
             parsed = fallback
         return min(max(0.001, parsed), ceiling)
 
+    def _configured_max_wall_seconds(self) -> float:
+        return self._positive_float(
+            os.environ.get("MAXIMALIST_MAX_WALL_SECONDS"),
+            DEFAULT_MAX_WALL_SECONDS,
+            MAX_WALL_SECONDS_CEILING,
+        )
+
     def _policy(self, budget: Any) -> BudgetPolicy:
         return BudgetPolicy(
             max_calls=self._positive_int(getattr(budget, "max_calls", None), 120, 120),
@@ -339,7 +362,9 @@ class PortableCoreEngine:
                 os.environ.get("MAXIMALIST_MAX_OUTPUT_PER_CALL"), 1024, 4096
             ),
             deadline_seconds=self._positive_float(
-                getattr(budget, "max_wall_s", None), 420.0, 420.0
+                getattr(budget, "max_wall_s", None),
+                self._configured_max_wall_seconds(),
+                self._configured_max_wall_seconds(),
             ),
             request_timeout_seconds=self._positive_float(
                 os.environ.get("MAXIMALIST_REQUEST_TIMEOUT_SECONDS"), 180.0, 300.0
@@ -396,10 +421,15 @@ class PortableCoreEngine:
         return PortableResult(result)
 
     async def resume(self, run_id: str) -> PortableResult:
+        max_wall_seconds = self._configured_max_wall_seconds()
         default_budget = type(
             "ResumeBudget",
             (),
-            {"max_calls": 120, "max_cost_usd": 5.0, "max_wall_s": 420.0},
+            {
+                "max_calls": 120,
+                "max_cost_usd": 5.0,
+                "max_wall_s": max_wall_seconds,
+            },
         )()
         result = await self._engine(self._policy(default_budget)).resume(run_id)
         return PortableResult(result)
@@ -430,9 +460,9 @@ def _build_portable_engine(cfg: dict[str, Any]) -> PortableCoreEngine:
     runtime = os.environ.get("MAXIMALIST_RUNTIME", "").strip()
     if not runtime:
         raise RuntimeError(
-            "MAXIMALIST_RUNTIME is required for reconstructed_v05; choose anvil_live or deterministic_test"
+            "MAXIMALIST_RUNTIME is required for reconstructed_v06; choose anvil_live or deterministic_test"
         )
-    state_dir = os.environ.get("MAXIMALIST_STATE_DIR", "runtime/maximalist-reconstructed-v05")
+    state_dir = os.environ.get("MAXIMALIST_STATE_DIR", "runtime/maximalist-reconstructed-v06")
     memory_file = os.environ.get("MAXIMALIST_MEMORY_FILE", "").strip() or None
     performance_file = os.environ.get("MAXIMALIST_PERFORMANCE_FILE", "").strip() or None
     return PortableCoreEngine(
@@ -443,4 +473,4 @@ def _build_portable_engine(cfg: dict[str, Any]) -> PortableCoreEngine:
     )
 
 
-register_profile("reconstructed_v05", _build_portable_engine)
+register_profile("reconstructed_v06", _build_portable_engine)

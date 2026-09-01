@@ -9,21 +9,29 @@ User=forge
 WorkingDirectory=/home/forge/echo-maximalist-swarm
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/home/forge/echo-maximalist-swarm/src
-Environment=FUSION_PROFILE=reconstructed_v05
+Environment=FUSION_PROFILE=reconstructed_v06
 Environment=FUSION_SEATS_PATH=/home/forge/echo-maximalist-swarm/config/seats.yaml
 Environment=FUSION_LOG_LEVEL=INFO
 Environment=MAXIMALIST_SDK_BASE_URL=http://127.0.0.1:8000
 Environment=FUSION_GATE_BASE=http://127.0.0.1:8000
-Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v05
-Environment=MAXIMALIST_MEMORY_FILE=/var/lib/echo/maximalist-reconstructed-v05/memory.json
-Environment=MAXIMALIST_PERFORMANCE_FILE=/var/lib/echo/maximalist-reconstructed-v05/performance.json
+Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v06
+Environment=MAXIMALIST_MEMORY_FILE=/var/lib/echo/maximalist-reconstructed-v06/memory.json
+Environment=MAXIMALIST_PERFORMANCE_FILE=/var/lib/echo/maximalist-reconstructed-v06/performance.json
 Environment=MAXIMALIST_ROUTING_POLICY=full_40
 Environment=MAXIMALIST_ROUTING_MAX_SEATS=40
+Environment=MAXIMALIST_CAPABILITY_PROFILE=echo_full_read_personality
+Environment=MAXIMALIST_MAX_CAPABILITY_CALLS=12
+Environment=MAXIMALIST_MAX_WALL_SECONDS=600
+Environment=PERSONALITY_FORGE_BASE_URL=http://127.0.0.1:18420
+Environment=PERSONALITY_FORGE_EXPECTED_COMMIT=a0907f5da9f624dde4406cfd4d371e6497372654
+Environment=PERSONALITY_FORGE_EXPECTED_RELEASE=20260804T084943Z-86b01e275844
+Environment=PERSONALITY_FORGE_EXPECTED_RUNTIME_ENV=py312-torch2.11.0-cu128-bnb0.50.1
+Environment=PERSONALITY_FORGE_MODEL=echo-gs343
 EnvironmentFile=-/etc/echo/echo-fusion-worker.env
 StandardInput=null
 # Bind loopback only — the sole caller is the SDK gate on this same host.
 ExecStart=/home/forge/echo-maximalist-swarm/.venv/bin/python -m uvicorn echo_fusion_worker.app:app --host 127.0.0.1 --port 8157 --log-level info
-StateDirectory=echo/maximalist-reconstructed-v05
+StateDirectory=echo/maximalist-reconstructed-v06
 StateDirectoryMode=0750
 Restart=on-failure
 RestartSec=5

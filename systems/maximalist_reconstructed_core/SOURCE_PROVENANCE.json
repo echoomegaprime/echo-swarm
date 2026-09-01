@@ -1,20 +1,20 @@
 {
   "profile": "MAXIMALIST_RECONSTRUCTED",
   "historical_parity": false,
-  "version": "0.5.3",
+  "version": "0.6.0",
   "source_repository": "maximalist-reconstructed",
-  "source_branch": "agent/trinity-anvil-output-v06",
-  "source_revision": "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f",
+  "source_branch": "agent/personality-forge-capability-v07",
+  "source_revision": "efc85e8cb6934b7edb0e28a44ddcab2d709ebb19",
   "artifact": {
-    "path": "vendor/maximalist_reconstructed-0.5.3-py3-none-any.whl",
-    "bytes": 72374,
-    "sha256": "defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5"
+    "path": "vendor/maximalist_reconstructed-0.6.0-py3-none-any.whl",
+    "bytes": 72638,
+    "sha256": "8dbd6519d7f7a093233145cccd91f92c01c8d58133c6801846dc4688318ea544"
   },
   "acceptance": {
-    "unit_tests_passed": 86,
+    "unit_tests_passed": 88,
     "clean_install_cli": "passed",
     "configured_seat_count": 40,
-    "configured_capability_count": 11,
+    "configured_capability_count": 12,
     "independent_first_pass": "passed",
     "finding_propagation": "passed",
     "dynamic_retasking": "passed",
@@ -26,7 +26,8 @@
     "capability_restart_replay": "passed",
     "anvil_context_limit_readback": 32768,
     "transport_timeout_alignment": "passed",
-    "live_sdk_activation": "0.5.2 capability routes individually proven; fresh 0.5.3 end-to-end acceptance pending"
+    "personality_forge_adapter_boundary": "host-injected; exact runtime identity and Ed25519 routing receipt required",
+    "live_sdk_activation": "eleven SDK routes and the direct signed Personality Forge route were proven separately; integrated 0.6.0 canary acceptance remains required"
   },
   "integration_boundary": "The wheel is an additive portable core. It does not replace or rewrite systems/echo_maximalist_fusion provenance-locked source, and it does not claim historical parity."
 }

@@ -13,15 +13,19 @@
     "bind": "127.0.0.1:8157"
   },
   "repository_transformations": {
-    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v05 integration adds an explicit adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
+    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v06 integration adds an exact portable core and signed Personality Forge adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
     "files": {
       "src/echo_fusion/arbitration.py": {
         "quench_sha256": "4a478cf1f62bbc8b66ed873f038bbc67f364df90611a7bd3b68238c852b0518f",
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-                "quench_sha256": "697aa179d2f26edf102f9a5aeba61630747d1283612d17ebfd8ba94bf5775898",
-        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, and completed durable state after process restart"
+        "quench_sha256": "259b4f0ec203af712c135716a870fd681f5ec12a6413b24a687d5810f3d2091a",
+        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v06 profile reports exact core, routing, capability, and Personality Forge readiness plus durable restart state"
+      },
+      "src/echo_fusion_worker/factory.py": {
+        "quench_sha256": "933ddca47d0c237aef4f28c353d619c502b9f84227535f0672932a60be02adf1",
+        "changes": "the operator-selected run wall defaults to 600 seconds, is hard-capped at 900 seconds, and cannot be lifted by a client budget"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -38,24 +42,40 @@
     },
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
-                "quench_sha256": "75b03dbcb8c7629864474400b8e4db1752086fa3f27cf01384c6a581d7c76597",
-        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.3 package, governed Echo SDK capability profile and measured live input contracts, explicit routing policies, restart-safe performance history, explicit fallback graph, phase-specific ANVIL Trinity output contract, aligned transport timeout, and explicit bounded ANVIL context to the asynchronous worker contract without modifying the recovered echo_fusion engine"
+        "quench_sha256": "dbb70210c40767ce8401eadabc3fb3997255c55ee7ef85f98c256f6a2abf07c3",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.6.0 package, twelve-lane capability profile, signed Personality Forge host adapter, bounded 600-to-900-second wall policy, explicit routing, durable performance history, fallback graph, Trinity schema, aligned transport timeout, and bounded ANVIL context without modifying the recovered echo_fusion engine"
+      },
+      "src/echo_fusion_worker/personality_forge.py": {
+        "quench_sha256": "8917fa158ea1390c45cf129f8658256a2b156e297e85cef2a3646681c09c2311",
+        "changes": "requires loopback access, exact TEMPER commit/release/runtime, loaded model, two-GPU placement, no fallback, exact adapter continuity, response binding, and a valid Ed25519 routing receipt"
       },
       "tests/test_portable_core.py": {
-                "quench_sha256": "409b22f64dfd9eb249b4c7341161e578699b4771560883a8a5f941c898d55c2b",
-        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, and restart no-replay"
+        "quench_sha256": "be87e0d0f4e8a77728e02c7be5ff118791a4dfa1a2ef8a44ad5d6614acadaf70",
+        "changes": "verifies the 0.6.0 artifact hash, direct wheel loading, 40-seat and separate-Trinity invariants, twelve capability lanes, worker round-trip, routing, claim topology, coverage, persistence, restart no-replay, and bounded wall control"
+      },
+      "tests/test_personality_forge.py": {
+        "quench_sha256": "79e0718fcd871eac44c3387c38f585299294962096e24f3da15a40c5b0208ea2",
+        "changes": "verifies live identity readiness, successful Ed25519 routing validation, bounded sanitized results, and fail-closed behavior for identity drift, fallback, invalid signatures, and non-loopback origins"
       },
       "tests/test_service_unit.py": {
-        "quench_sha256": "d7c02fb11bfe8fa4e244680124a9d880dcc16d10e2a4e8b21d99eeeff830190f",
-        "changes": "verifies v05 profile selection and isolated run-state, memory, performance, and routing configuration"
+        "quench_sha256": "b364c980a751fe7c28c9abee475d6f945bd11af71027bd44feb0f5b71fa84208",
+        "changes": "verifies v06 profile selection, isolated durable state, twelve-lane capability selection, bounded wall, and exact Personality Forge runtime pins"
       },
       "deploy/echo-fusion-worker.service": {
-        "quench_sha256": "d49945ac2c88927e0abf38ed32d1a31b12c2e79b81942fed46dd7952b64bbbee",
-        "changes": "selects the v05 adapter and isolated restart-safe state, memory, performance, and explicit full-40 routing defaults"
+        "quench_sha256": "3f7a3648f5c9ca3c7f8c16534662f02795ad711d7faad66acec68714b6d7fcde",
+        "changes": "selects the v06 adapter, isolated restart-safe state, full-40 routing, twelve capabilities, bounded wall, and exact loopback Personality Forge identity pins"
+      },
+      "requirements.txt": {
+        "quench_sha256": "6b93cbde7d9012610648854396ad2cd68fccbc9aa958df4690ec777c5c0be316",
+        "changes": "adds the bounded cryptography dependency required for Ed25519 routing-receipt verification"
       },
       "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.3-py3-none-any.whl": {
         "source_revision": "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f",
         "sha256": "defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5"
+      },
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.6.0-py3-none-any.whl": {
+        "source_revision": "efc85e8cb6934b7edb0e28a44ddcab2d709ebb19",
+        "sha256": "8dbd6519d7f7a093233145cccd91f92c01c8d58133c6801846dc4688318ea544"
       }
     }
   },

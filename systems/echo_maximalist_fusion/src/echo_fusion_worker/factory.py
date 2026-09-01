@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Callable
 
 from echo_fusion.adapters import (FakeMemory, HashEmbedder, InMemoryStateStore,
@@ -32,7 +33,17 @@ MAX_COST_CEILING: float = 5.0     # USD, per run
 # decompose -> first-pass -> trinity-fuse -> verify cycle needs real wall headroom or
 # fusion is cut off before it can synthesize an answer (observed: a 141s run truncated
 # at the old 120s cap and abstained on an empty answer).
-MAX_WALL_CEILING: float = 420.0   # seconds, per run
+MAX_WALL_DEFAULT: float = 600.0   # seconds, per run
+MAX_WALL_CEILING: float = 900.0   # absolute ceiling, per run
+
+
+def configured_max_wall_seconds() -> float:
+    """Resolve the bounded operator ceiling without letting clients lift it."""
+    try:
+        value = float(os.environ.get("MAXIMALIST_MAX_WALL_SECONDS", MAX_WALL_DEFAULT))
+    except (TypeError, ValueError):
+        value = MAX_WALL_DEFAULT
+    return min(max(1.0, value), MAX_WALL_CEILING)
 
 
 def clamp_budget(b: Budget | None) -> Budget:
@@ -42,13 +53,24 @@ def clamp_budget(b: Budget | None) -> Budget:
     clamped = Budget(
         max_calls=min(int(b.max_calls), MAX_CALLS_CEILING),
         max_cost_usd=min(float(b.max_cost_usd), MAX_COST_CEILING),
-        max_wall_s=min(float(b.max_wall_s), MAX_WALL_CEILING),
+        max_wall_s=min(float(b.max_wall_s), configured_max_wall_seconds()),
         calls_spent=b.calls_spent,
         cost_spent=b.cost_spent,
     )
-    if clamped.max_calls != b.max_calls or clamped.max_cost_usd != b.max_cost_usd:
-        log.info("budget clamped: calls %s->%s cost %.2f->%.2f",
-                 b.max_calls, clamped.max_calls, b.max_cost_usd, clamped.max_cost_usd)
+    if (
+        clamped.max_calls != b.max_calls
+        or clamped.max_cost_usd != b.max_cost_usd
+        or clamped.max_wall_s != b.max_wall_s
+    ):
+        log.info(
+            "budget clamped: calls %s->%s cost %.2f->%.2f wall %.1f->%.1f",
+            b.max_calls,
+            clamped.max_calls,
+            b.max_cost_usd,
+            clamped.max_cost_usd,
+            b.max_wall_s,
+            clamped.max_wall_s,
+        )
     return clamped
 
 

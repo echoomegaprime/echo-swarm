@@ -25,7 +25,7 @@ from echo_fusion.schemas import Budget, RunState
 from .config import load_seats, seats_fingerprint
 from .factory import build_engine, clamp_budget
 
-WORKER_VERSION = "0.2.0"
+WORKER_VERSION = "0.3.0"
 WAIT_CAP_SECONDS = 30.0
 
 logging.basicConfig(
@@ -203,8 +203,8 @@ def _build_from_env() -> FastAPI:
     profile = os.environ.get("FUSION_PROFILE", "stub")
     if profile == "live":
         import echo_fusion_worker.live_adapters  # noqa: F401 — registers the "live" profile
-    elif profile == "reconstructed_v05":
-        import echo_fusion_worker.portable_core  # noqa: F401 — exact 0.5.3 portable core
+    elif profile == "reconstructed_v06":
+        import echo_fusion_worker.portable_core  # noqa: F401 — exact 0.6.0 portable core
     cfg = load_seats(seats_path)   # fail-closed: bad/missing config aborts boot
     fingerprint = seats_fingerprint(cfg)
     log.info("boot seats=%s profile=%s fingerprint=%s", seats_path, profile, fingerprint)
