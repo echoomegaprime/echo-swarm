@@ -19,6 +19,10 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const fakeBearer = ["Bearer", "maximalist-integration-token"].join(" ");
   const fakeApiKey = ["API_KEY", "maximalist-integration-key"].join("=");
   let historicalParity = false;
+  let providerMode = "live";
+  let capabilityMode = "live";
+  let capabilityReady = true;
+  let resultCoreSha = "c7505746b578aae3dcd524ab2b218e86f257badd";
   const worker = createHttpServer(async (request, response) => {
     const body = await jsonBody(request);
     workerCalls.push({ method: request.method, url: request.url, body });
@@ -34,11 +38,11 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
           historical_parity: historicalParity,
           core_version: "0.4.0",
           core_sha: "c7505746b578aae3dcd524ab2b218e86f257badd",
-          provider_mode: "live",
+          provider_mode: providerMode,
           capability_profile: "echo_full_read",
-          capability_mode: "live",
-          capability_ready: true,
-          ready_capability_count: 11,
+          capability_mode: capabilityMode,
+          capability_ready: capabilityReady,
+          ready_capability_count: capabilityReady ? 11 : 10,
           selected_capability_ids: [
             "echo.arcanum.search",
             "echo.arcanum.enrich",
@@ -52,7 +56,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
             "echo.wolfram.health",
             "echo.dr.phoenix_status",
           ],
-          degraded_capability_ids: [],
+          degraded_capability_ids: capabilityReady ? [] : ["echo.arcanum.search"],
           runtime: "anvil_live",
           configured_seat_count: 40,
           trinity_separate: true,
@@ -91,7 +95,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
               profile: "MAXIMALIST_RECONSTRUCTED",
               historical_parity: false,
               core_version: "0.4.0",
-              core_sha: "c7505746b578aae3dcd524ab2b218e86f257badd",
+              core_sha: resultCoreSha,
               provider_mode: "live",
               capability_profile: "echo_full_read",
               capability_mode: "live",
@@ -241,14 +245,74 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const resumed = await rpc(5, "swarm_maximalist_resume", { run_id: "run_acceptance" });
   assert.equal(resumed.result.structuredContent.phase, "resuming");
 
+  capabilityReady = false;
+  const runCallsBeforeCapabilityBlock = workerCalls.filter(
+    (call) => call.method === "POST" && call.url === "/run",
+  ).length;
+  const blockedStart = await rpc(6, "swarm_maximalist_start", {
+    objective: "This must fail closed before /run",
+  });
+  assert.equal(blockedStart.result.isError, true);
+  assert.match(blockedStart.result.content[0].text, /provider or capability readiness/i);
+  assert.equal(
+    workerCalls.filter((call) => call.method === "POST" && call.url === "/run").length,
+    runCallsBeforeCapabilityBlock,
+    "capability_ready=false must block start before /run",
+  );
+
+  const resumeCallsBeforeCapabilityBlock = workerCalls.filter(
+    (call) => call.method === "POST" && call.url === "/resume",
+  ).length;
+  const blockedResume = await rpc(7, "swarm_maximalist_resume", {
+    run_id: "run_acceptance",
+  });
+  assert.equal(blockedResume.result.isError, true);
+  assert.match(blockedResume.result.content[0].text, /provider or capability readiness/i);
+  assert.equal(
+    workerCalls.filter((call) => call.method === "POST" && call.url === "/resume").length,
+    resumeCallsBeforeCapabilityBlock,
+    "capability_ready=false must block resume before /resume",
+  );
+
+  capabilityReady = true;
+  const recoveredStart = await rpc(8, "swarm_maximalist_start", {
+    objective: "All exact live readiness fields are true",
+  });
+  assert.equal(recoveredStart.result.structuredContent.ok, true);
+
+  providerMode = "deterministic_test";
+  capabilityMode = "deterministic_test";
+  const deterministicHealth = await rpc(9, "swarm_maximalist_health");
+  assert.equal(deterministicHealth.result.structuredContent.ok, true);
+  assert.equal(deterministicHealth.result.structuredContent.provider_mode, "deterministic_test");
+  assert.equal(deterministicHealth.result.structuredContent.capability_mode, "deterministic_test");
+  const deterministicStart = await rpc(10, "swarm_maximalist_start", {
+    objective: "Deterministic health is visible but cannot execute",
+  });
+  assert.equal(deterministicStart.result.isError, true);
+  const deterministicResume = await rpc(11, "swarm_maximalist_resume", {
+    run_id: "run_acceptance",
+  });
+  assert.equal(deterministicResume.result.isError, true);
+  providerMode = "live";
+  capabilityMode = "live";
+
+  resultCoreSha = "0000000000000000000000000000000000000000";
+  const rejectedCompletedProvenance = await rpc(12, "swarm_maximalist_result", {
+    run_id: "run_acceptance",
+  });
+  assert.equal(rejectedCompletedProvenance.result.isError, true);
+  assert.match(rejectedCompletedProvenance.result.content[0].text, /provenance/i);
+  resultCoreSha = "c7505746b578aae3dcd524ab2b218e86f257badd";
+
   historicalParity = true;
-  const rejectedIdentity = await rpc(6, "swarm_maximalist_health");
+  const rejectedIdentity = await rpc(13, "swarm_maximalist_health");
   assert.equal(rejectedIdentity.result.isError, true);
   assert.match(rejectedIdentity.result.content[0].text, /identity/i);
   historicalParity = false;
 
   const callsBeforeInvalid = workerCalls.length;
-  const invalid = await rpc(7, "swarm_maximalist_result", { run_id: "../../etc/passwd" });
+  const invalid = await rpc(14, "swarm_maximalist_result", { run_id: "../../etc/passwd" });
   assert.equal(invalid.result.isError, true);
   assert.match(invalid.result.content[0].text, /run_id/i);
   assert.equal(workerCalls.length, callsBeforeInvalid, "invalid run ids must fail before fetch");

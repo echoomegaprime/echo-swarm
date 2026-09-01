@@ -249,10 +249,15 @@ function assertCoreIdentity(body: JsonRecord, options: { requireLive?: boolean }
   }
   if (
     requireLive &&
-    (body.provider_mode !== "live" || body.capability_mode !== "live" || body.ready !== true)
+    (
+      body.provider_mode !== "live" ||
+      body.capability_mode !== "live" ||
+      body.capability_ready !== true ||
+      body.ready !== true
+    )
   ) {
     throw new SafeMaximalistError(
-      "Maximalist Fusion live execution is blocked by provider readiness.",
+      "Maximalist Fusion live execution is blocked by provider or capability readiness.",
     );
   }
 }
