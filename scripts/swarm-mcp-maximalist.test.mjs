@@ -22,7 +22,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   let providerMode = "live";
   let capabilityMode = "live";
   let capabilityReady = true;
-  let resultCoreSha = "c7505746b578aae3dcd524ab2b218e86f257badd";
+  let resultCoreSha = "8b65901d8f037374ad48cbb7ee4bf488d1f1327c";
   const worker = createHttpServer(async (request, response) => {
     const body = await jsonBody(request);
     workerCalls.push({ method: request.method, url: request.url, body });
@@ -36,8 +36,8 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
           version: "0.2.0",
           profile: "MAXIMALIST_RECONSTRUCTED",
           historical_parity: historicalParity,
-          core_version: "0.4.0",
-          core_sha: "c7505746b578aae3dcd524ab2b218e86f257badd",
+          core_version: "0.5.0",
+          core_sha: "8b65901d8f037374ad48cbb7ee4bf488d1f1327c",
           provider_mode: providerMode,
           capability_profile: "echo_full_read",
           capability_mode: capabilityMode,
@@ -60,6 +60,21 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
           runtime: "anvil_live",
           configured_seat_count: 40,
           trinity_separate: true,
+          routing_policy: "full_40",
+          routing_max_seats: 40,
+          supported_routing_policies: [
+            "adaptive",
+            "canary",
+            "cost_bounded",
+            "full_40",
+            "high_assurance",
+            "latency_bounded",
+            "offline_private",
+          ],
+          performance_persistence: true,
+          explicit_fallback_configured: false,
+          claim_topology: true,
+          coverage_telemetry: true,
           ready: true,
           planner_ready: true,
           ready_swarm_seats: 40,
@@ -94,13 +109,32 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
             provenance: {
               profile: "MAXIMALIST_RECONSTRUCTED",
               historical_parity: false,
-              core_version: "0.4.0",
+              core_version: "0.5.0",
               core_sha: resultCoreSha,
               provider_mode: "live",
               capability_profile: "echo_full_read",
               capability_mode: "live",
               trinity_separate: true,
+              seat_count: 2,
+              routing: {
+                profile: "MAXIMALIST_RECONSTRUCTED",
+                historical_parity: false,
+                policy: "full_40",
+                selected_seat_ids: ["seat_01", "seat_10"],
+                routing_fingerprint: "a".repeat(64),
+              },
             },
+            coverage: {
+              selected_seats: 2,
+              configured_seats: 40,
+              selection_ratio: 0.05,
+            },
+            claim_clusters: [{ cluster_id: "claim_cluster_1", support_count: 39 }],
+            seat_contributions: [{ seat_id: "seat-01", claim_ids: ["claim_cluster_1"] }],
+            performance_writes: [
+              "performance:run_acceptance:seat_01:independent:1",
+              "performance:run_acceptance:seat_10:independent:1",
+            ],
             capability_results: [
               { capability_id: "echo.wolfram.llm", status: "completed" },
               { capability_id: "echo.arcanum.search", status: "unauthorized" },
@@ -195,10 +229,10 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert.equal(health.result.structuredContent.ok, true);
   assert.equal(health.result.structuredContent.profile, "MAXIMALIST_RECONSTRUCTED");
   assert.equal(health.result.structuredContent.historical_parity, false);
-  assert.equal(health.result.structuredContent.core_version, "0.4.0");
+  assert.equal(health.result.structuredContent.core_version, "0.5.0");
   assert.equal(
     health.result.structuredContent.core_sha,
-    "c7505746b578aae3dcd524ab2b218e86f257badd",
+    "8b65901d8f037374ad48cbb7ee4bf488d1f1327c",
   );
   assert.equal(health.result.structuredContent.capability_profile, "echo_full_read");
   assert.equal(health.result.structuredContent.capability_mode, "live");
@@ -206,6 +240,12 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert.match(health.result.content[0].text, /Capabilities:/i);
   assert.equal(health.result.structuredContent.configured_seat_count, 40);
   assert.equal(health.result.structuredContent.trinity_separate, true);
+  assert.equal(health.result.structuredContent.routing_policy, "full_40");
+  assert.equal(health.result.structuredContent.routing_max_seats, 40);
+  assert.equal(health.result.structuredContent.performance_persistence, true);
+  assert.equal(health.result.structuredContent.claim_topology, true);
+  assert.equal(health.result.structuredContent.coverage_telemetry, true);
+  assert.match(health.result.content[0].text, /Routing:/i);
   assert.equal(health.result.structuredContent.seats_fingerprint, "63374b318f846f51");
   assert.match(health.result.content[0].text, /Maximalist Fusion/i);
 
@@ -235,6 +275,11 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert.match(completed.result.content[0].text, /Verified fused answer/);
   assert.match(completed.result.content[0].text, /Preserved minority position/);
   assert.match(completed.result.content[0].text, /Capability grounding/i);
+  assert.match(completed.result.content[0].text, /Fusion coverage/i);
+  assert.equal(completed.result.structuredContent.result.coverage.selected_seats, 2);
+  assert.equal(completed.result.structuredContent.result.claim_clusters.length, 1);
+  assert.equal(completed.result.structuredContent.result.seat_contributions.length, 1);
+  assert.equal(completed.result.structuredContent.result.performance_writes.length, 2);
   assert.doesNotMatch(completed.result.content[0].text, /maximalist-integration-token/);
   assert.doesNotMatch(completed.result.content[0].text, /maximalist-integration-key/);
   assert.doesNotMatch(
@@ -303,7 +348,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   });
   assert.equal(rejectedCompletedProvenance.result.isError, true);
   assert.match(rejectedCompletedProvenance.result.content[0].text, /provenance/i);
-  resultCoreSha = "c7505746b578aae3dcd524ab2b218e86f257badd";
+  resultCoreSha = "8b65901d8f037374ad48cbb7ee4bf488d1f1327c";
 
   historicalParity = true;
   const rejectedIdentity = await rpc(13, "swarm_maximalist_health");

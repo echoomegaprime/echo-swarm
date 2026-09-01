@@ -1,4 +1,4 @@
-"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.4.0 adapter."""
+"""Contract tests for the additive MAXIMALIST_RECONSTRUCTED 0.5.0 adapter."""
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +16,7 @@ CORE_WHEEL = (
     / "systems"
     / "maximalist_reconstructed_core"
     / "vendor"
-    / "maximalist_reconstructed-0.4.0-py3-none-any.whl"
+    / "maximalist_reconstructed-0.5.0-py3-none-any.whl"
 )
 WORKER_SRC = REPO_ROOT / "systems" / "echo_maximalist_fusion" / "src"
 sys.path.insert(0, str(CORE_WHEEL))
@@ -29,6 +29,7 @@ from echo_fusion_worker.portable_core import (  # noqa: E402
     CORE_SHA,
     CORE_VERSION,
     PortableCoreEngine,
+    SUPPORTED_ROUTING_POLICIES,
 )
 
 EXPECTED_CAPABILITY_IDS = [
@@ -55,7 +56,7 @@ def test_vendored_wheel_is_present_and_sha_bound() -> None:
 
     assert CORE_WHEEL.is_file()
     assert hashlib.sha256(CORE_WHEEL.read_bytes()).hexdigest() == (
-        "b144354dc5021937d6d280eeb19cbd0cd89fd2830ea37eee40ff13bcc109aa6c"
+        "8ba752e781f91599e16ef9609998306a85e3948aaa77f707675e9f279ba2d040"
     )
 
 
@@ -70,6 +71,13 @@ def test_anvil_runtime_has_40_seats_and_separate_trinity(tmp_path: Path) -> None
         "runtime": "anvil_live",
         "configured_seat_count": 40,
         "trinity_separate": True,
+        "routing_policy": "full_40",
+        "routing_max_seats": 40,
+        "supported_routing_policies": sorted(SUPPORTED_ROUTING_POLICIES),
+        "performance_persistence": True,
+        "explicit_fallback_configured": False,
+        "claim_topology": True,
+        "coverage_telemetry": True,
         "capability_profile": "echo_full_read",
         "capability_mode": "live",
         "selected_capability_ids": EXPECTED_CAPABILITY_IDS,
@@ -83,7 +91,7 @@ def test_anvil_runtime_has_40_seats_and_separate_trinity(tmp_path: Path) -> None
 def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
     async def exercise() -> tuple[str, dict]:
         runtime = PortableCoreEngine(runtime="deterministic_test", state_dir=tmp_path)
-        app = create_app(engine=runtime, profile="reconstructed_v03", fingerprint="portable-v03")
+        app = create_app(engine=runtime, profile="reconstructed_v05", fingerprint="portable-v05")
 
         async with _client(app) as client:
             health = await client.get("/health")
@@ -131,12 +139,20 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
             assert result["provenance"]["deterministic_test_output"] is True
             assert result["provenance"]["capability_profile"] == "echo_full_read"
             assert result["provenance"]["capability_mode"] == "deterministic_test"
+            assert result["provenance"]["routing"]["policy"] == "full_40"
+            assert len(result["provenance"]["routing"]["routing_fingerprint"]) == 64
+            assert result["coverage"]["selected_seats"] == 40
+            assert result["coverage"]["configured_seats"] == 40
+            assert result["coverage"]["selection_ratio"] == 1.0
+            assert result["claim_clusters"]
+            assert result["seat_contributions"]
+            assert result["performance_writes"]
             assert len(result["capability_results"]) == 11
 
             selftest = await client.post("/selftest")
             assert selftest.status_code == 200, selftest.text
             assert selftest.json()["ok"] is True
-            assert selftest.json()["profile"] == "reconstructed_v03"
+            assert selftest.json()["profile"] == "reconstructed_v05"
             return run_id, result
 
     run_id, result = asyncio.run(exercise())
@@ -147,6 +163,7 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
     assert recovered["result"]["answer"] == result["answer"]
     assert restarted.fake_capabilities is not None
     assert restarted.fake_capabilities.calls == []
+    assert restarted.performance.snapshot()
 
     resumed = asyncio.run(restarted.resume(run_id))
     assert resumed.answer == result["answer"]
@@ -156,6 +173,41 @@ def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
 def test_unknown_runtime_fails_closed(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="MAXIMALIST_RUNTIME"):
         PortableCoreEngine(runtime="automatic-fallback", state_dir=tmp_path)
+
+
+def test_adaptive_routing_is_bounded_and_persists_performance(tmp_path: Path) -> None:
+    runtime = PortableCoreEngine(
+        runtime="deterministic_test",
+        state_dir=tmp_path,
+        routing_policy="adaptive",
+        routing_max_seats=8,
+    )
+    state = runtime.create_state(
+        "Audit a high-risk security recovery design",
+        {},
+        Budget(max_calls=120, max_cost_usd=5, max_wall_s=120),
+    )
+    result = asyncio.run(runtime.drive_state(state)).model_dump(mode="json")
+
+    assert runtime.metadata["routing_policy"] == "adaptive"
+    assert runtime.metadata["routing_max_seats"] == 8
+    assert result["provenance"]["seat_count"] == 8
+    assert result["provenance"]["routing"]["policy"] == "adaptive"
+    assert len(result["provenance"]["routing"]["routing_fingerprint"]) == 64
+    assert result["coverage"]["selected_seats"] == 8
+    assert result["coverage"]["configured_seats"] == 40
+    assert result["coverage"]["selection_ratio"] == 0.2
+    assert len(result["performance_writes"]) == len(result["performance_updates"])
+    assert (tmp_path / "performance.json").is_file()
+
+
+def test_unknown_routing_policy_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="MAXIMALIST_ROUTING_POLICY"):
+        PortableCoreEngine(
+            runtime="deterministic_test",
+            state_dir=tmp_path,
+            routing_policy="automatic-fallback",
+        )
 
 
 def test_reconstructed_profile_requires_explicit_runtime(monkeypatch, tmp_path: Path) -> None:

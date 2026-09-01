@@ -1,8 +1,8 @@
-"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.4.0.
+"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.5.0.
 
 The portable core is additive: the recovered ``echo_fusion`` engine remains
 untouched and available under its existing profiles. Selecting
-``FUSION_PROFILE=reconstructed_v03`` opts into this adapter explicitly.
+``FUSION_PROFILE=reconstructed_v05`` opts into this adapter explicitly.
 """
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from maximalist_reconstructed import (
     EchoSDKCapabilityAdapter,
     FusionEngine,
     JsonFileMemoryAdapter,
+    JsonFilePerformanceAdapter,
     JsonRunStateStore,
     ProviderRegistry,
     anvil_ollama_registry,
@@ -35,10 +36,22 @@ from maximalist_reconstructed import (
 from .factory import register_profile
 
 CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED"
-CORE_VERSION = "0.4.0"
-CORE_SHA = "c7505746b578aae3dcd524ab2b218e86f257badd"
+CORE_VERSION = "0.5.0"
+CORE_SHA = "8b65901d8f037374ad48cbb7ee4bf488d1f1327c"
 HISTORICAL_PARITY = False
 SUPPORTED_RUNTIMES = frozenset({"anvil_live", "deterministic_test"})
+SUPPORTED_ROUTING_POLICIES = frozenset(
+    {
+        "full_40",
+        "adaptive",
+        "cost_bounded",
+        "latency_bounded",
+        "offline_private",
+        "high_assurance",
+        "canary",
+    }
+)
+DEFAULT_ROUTING_POLICY = "full_40"
 DEFAULT_CAPABILITY_PROFILE = "echo_full_read"
 DEFAULT_SDK_BASE_URL = "http://127.0.0.1:8002"
 
@@ -116,9 +129,13 @@ class PortableCoreEngine:
         runtime: str,
         state_dir: str | Path,
         memory_file: str | Path | None = None,
+        performance_file: str | Path | None = None,
         anvil_base_url: str | None = None,
         capability_profile: str | None = None,
         sdk_base_url: str | None = None,
+        routing_policy: str | None = None,
+        routing_max_seats: int | None = None,
+        fallback_config: str | Path | None = None,
     ) -> None:
         if runtime not in SUPPORTED_RUNTIMES:
             raise ValueError(
@@ -127,6 +144,34 @@ class PortableCoreEngine:
         self.runtime = runtime
         self.state_store = JsonRunStateStore(state_dir)
         self.memory = JsonFileMemoryAdapter(memory_file or Path(state_dir) / "memory.json")
+        self.performance = JsonFilePerformanceAdapter(
+            performance_file or Path(state_dir) / "performance.json"
+        )
+        selected_routing_policy = (
+            routing_policy
+            or os.environ.get("MAXIMALIST_ROUTING_POLICY", "").strip()
+            or DEFAULT_ROUTING_POLICY
+        )
+        if selected_routing_policy not in SUPPORTED_ROUTING_POLICIES:
+            raise ValueError(
+                "MAXIMALIST_ROUTING_POLICY must be one of "
+                f"{sorted(SUPPORTED_ROUTING_POLICIES)}; got {selected_routing_policy!r}"
+            )
+        self.routing_policy = selected_routing_policy
+        default_routing_limit = 40 if selected_routing_policy == "full_40" else 12
+        self.routing_max_seats = self._positive_int(
+            routing_max_seats
+            if routing_max_seats is not None
+            else os.environ.get("MAXIMALIST_ROUTING_MAX_SEATS"),
+            default_routing_limit,
+            40,
+        )
+        selected_fallback_config = (
+            os.fspath(fallback_config)
+            if fallback_config is not None
+            else os.environ.get("MAXIMALIST_FALLBACK_CONFIG", "").strip()
+        )
+        self.explicit_fallback_configured = bool(selected_fallback_config)
         self.capability_catalog = CapabilityCatalog.load()
         selected_profile = (
             capability_profile
@@ -185,6 +230,8 @@ class PortableCoreEngine:
                 adapter=sdk_adapter,
                 max_calls=capability_limit,
             )
+        if selected_fallback_config:
+            self.providers.load_fallback_config(selected_fallback_config)
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -197,6 +244,13 @@ class PortableCoreEngine:
             "runtime": self.runtime,
             "configured_seat_count": len(self.registry.seats),
             "trinity_separate": True,
+            "routing_policy": self.routing_policy,
+            "routing_max_seats": self.routing_max_seats,
+            "supported_routing_policies": sorted(SUPPORTED_ROUTING_POLICIES),
+            "performance_persistence": True,
+            "explicit_fallback_configured": self.explicit_fallback_configured,
+            "claim_topology": True,
+            "coverage_telemetry": True,
             "capability_profile": self.capabilities.profile,
             "capability_mode": self.capabilities.mode,
             "selected_capability_ids": self.capabilities.selected_ids,
@@ -301,16 +355,35 @@ class PortableCoreEngine:
             budget_policy=policy,
             cost_table=self.costs,
             capabilities=self.capabilities,
+            performance=self.performance,
         )
 
     async def drive_state(self, state: PortableRunState) -> PortableResult:
+        eligible_seat_ids = None
+        if self.provider_mode == "live" and self.routing_policy != "full_40":
+            report = await build_preflight_report(
+                self.registry,
+                self.providers,
+                self.costs,
+                runtime="live",
+            )
+            if not report.planner_ready or not report.ready_trinity_seats:
+                raise RuntimeError(
+                    "adaptive live routing requires a ready planner and at least one Trinity seat"
+                )
+            eligible_seat_ids = report.ready_swarm_seats
         result = await self._engine(self._policy(state.budget)).run(
             state.objective,
             state.context,
             run_id=state.run_id,
             execution_mode=(
-                "deterministic_test" if self.provider_mode == "deterministic_test" else "full_live"
+                f"deterministic_{self.routing_policy}"
+                if self.provider_mode == "deterministic_test"
+                else f"{self.routing_policy}_live"
             ),
+            routing_policy=self.routing_policy,
+            routing_max_seats=self.routing_max_seats,
+            eligible_seat_ids=eligible_seat_ids,
         )
         return PortableResult(result)
 
@@ -349,11 +422,17 @@ def _build_portable_engine(cfg: dict[str, Any]) -> PortableCoreEngine:
     runtime = os.environ.get("MAXIMALIST_RUNTIME", "").strip()
     if not runtime:
         raise RuntimeError(
-            "MAXIMALIST_RUNTIME is required for reconstructed_v03; choose anvil_live or deterministic_test"
+            "MAXIMALIST_RUNTIME is required for reconstructed_v05; choose anvil_live or deterministic_test"
         )
-    state_dir = os.environ.get("MAXIMALIST_STATE_DIR", "runtime/maximalist-reconstructed-v03")
+    state_dir = os.environ.get("MAXIMALIST_STATE_DIR", "runtime/maximalist-reconstructed-v05")
     memory_file = os.environ.get("MAXIMALIST_MEMORY_FILE", "").strip() or None
-    return PortableCoreEngine(runtime=runtime, state_dir=state_dir, memory_file=memory_file)
+    performance_file = os.environ.get("MAXIMALIST_PERFORMANCE_FILE", "").strip() or None
+    return PortableCoreEngine(
+        runtime=runtime,
+        state_dir=state_dir,
+        memory_file=memory_file,
+        performance_file=performance_file,
+    )
 
 
-register_profile("reconstructed_v03", _build_portable_engine)
+register_profile("reconstructed_v05", _build_portable_engine)

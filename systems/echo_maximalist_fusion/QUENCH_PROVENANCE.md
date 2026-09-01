@@ -10,7 +10,7 @@ The Echo Swarm web/MCP application does not expose a caller-supplied worker addr
 
 Independent PR review corrected `src/echo_fusion/arbitration.py` so identical claim prefixes from different subproblems cannot be collapsed as replication and asynchronous completion cannot promote a less-corroborated member as the visible cluster representative. It corrected `src/echo_fusion_worker/app.py` so an idempotent `wait:true` retry waits for an existing run and returns the completed result inline; `src/echo_fusion_worker/live_adapters.py` now parses whitespace-tolerant key assignments; and `src/echo_fusion/schemas.py` caps model-labeled external evidence until trusted verification. `SOURCE_PROVENANCE.json` retains the original FORGE SHAs and records the corrected QUENCH SHAs; the authored `tests/test_review_regressions.py` plus the updated trusted-evidence cascade invariant prove these boundaries.
 
-The later `reconstructed_v03` integration is additive. It does not relabel or replace the recovered `echo_fusion` engine. `src/echo_fusion_worker/portable_core.py` adapts the separately versioned wheel under `../maximalist_reconstructed_core/`; that directory binds the wheel to source SHA `c7505746b578aae3dcd524ab2b218e86f257badd` and SHA-256 `b144354dc5021937d6d280eeb19cbd0cd89fd2830ea37eee40ff13bcc109aa6c`. The app change only exposes this adapter when `FUSION_PROFILE=reconstructed_v03`; its existing `stub` and `live` profiles remain distinct. Version 0.4.0 adds an optional, bounded Echo SDK capability phase and bounded persistent-memory context without changing the recovered engine.
+The later `reconstructed_v05` integration is additive. It does not relabel or replace the recovered `echo_fusion` engine. `src/echo_fusion_worker/portable_core.py` adapts the separately versioned wheel under `../maximalist_reconstructed_core/`; that directory binds the wheel to source SHA `8b65901d8f037374ad48cbb7ee4bf488d1f1327c` and SHA-256 `8ba752e781f91599e16ef9609998306a85e3948aaa77f707675e9f279ba2d040`. The app exposes this adapter only when `FUSION_PROFILE=reconstructed_v05`; its existing `stub` and `live` profiles remain distinct. Version 0.5.0 adds deterministic routing receipts, configurable bounded routing, evidence claim topology, coverage telemetry, explicit provider/model fallback configuration, and restart-safe seat-performance history in addition to the bounded Echo SDK capability and memory phases. These mechanisms belong to the reconstruction and do not establish historical parity.
 
 ## Verification
 
@@ -20,7 +20,7 @@ $env:PYTHONPATH = "$PWD\systems\echo_maximalist_fusion\src"
 .\.venv-brain\Scripts\python.exe systems\echo_maximalist_fusion\tests\test_worker.py
 .\.venv-brain\Scripts\python.exe systems\echo_maximalist_fusion\tests\test_live_adapters.py
 .\.venv-brain\Scripts\python.exe -m pytest systems\echo_maximalist_fusion\tests\test_review_regressions.py -q
-$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.4.0-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
+$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.5.0-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
 .\.venv-brain\Scripts\python.exe -m pytest systems\echo_maximalist_fusion\tests\test_portable_core.py -q
 ```
 

@@ -9,18 +9,24 @@ UNIT = Path(__file__).resolve().parents[1] / "deploy" / "echo-fusion-worker.serv
 def test_service_unit_is_profile_bound_and_state_isolated() -> None:
     unit = UNIT.read_text(encoding="utf-8")
 
-    assert "Environment=FUSION_PROFILE=reconstructed_v03" in unit
+    assert "Environment=FUSION_PROFILE=reconstructed_v05" in unit
     assert "Environment=MAXIMALIST_SDK_BASE_URL=http://127.0.0.1:8000" in unit
     assert "Environment=FUSION_GATE_BASE=http://127.0.0.1:8000" in unit
     assert (
-        "Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v03"
+        "Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v05"
         in unit
     )
     assert (
         "Environment=MAXIMALIST_MEMORY_FILE="
-        "/var/lib/echo/maximalist-reconstructed-v03/memory.json"
+        "/var/lib/echo/maximalist-reconstructed-v05/memory.json"
     ) in unit
-    assert "StateDirectory=echo/maximalist-reconstructed-v03" in unit
+    assert (
+        "Environment=MAXIMALIST_PERFORMANCE_FILE="
+        "/var/lib/echo/maximalist-reconstructed-v05/performance.json"
+    ) in unit
+    assert "Environment=MAXIMALIST_ROUTING_POLICY=full_40" in unit
+    assert "Environment=MAXIMALIST_ROUTING_MAX_SEATS=40" in unit
+    assert "StateDirectory=echo/maximalist-reconstructed-v05" in unit
     assert "StateDirectoryMode=0750" in unit
     assert (
         "ExecStart=/home/forge/echo-maximalist-swarm/.venv/bin/python -m uvicorn "

@@ -13,15 +13,15 @@
     "bind": "127.0.0.1:8157"
   },
   "repository_transformations": {
-    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v03 integration adds an explicit adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
+    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v05 integration adds an explicit adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
     "files": {
       "src/echo_fusion/arbitration.py": {
         "quench_sha256": "4a478cf1f62bbc8b66ed873f038bbc67f364df90611a7bd3b68238c852b0518f",
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-        "quench_sha256": "e71fed282484aa4cecc2d03da6129abc9ad0374add09a8cb9b40da5b8ac28336",
-        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v03 profile receives bounded caller context, reports exact core identity, capability readiness, and completed durable state after process restart"
+        "quench_sha256": "d6a29cdf1faf95680ab9a8db899fc063a4d81d817c71abac47312f03cbbef117",
+        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, and completed durable state after process restart"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -38,16 +38,24 @@
     },
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
-        "quench_sha256": "34c07c18b656caf268bb724df7df560a1ee321e5f1106106dc9e5243ca0790ce",
-        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.4.0 package and its governed Echo SDK capability profile to the existing asynchronous worker contract without modifying the recovered echo_fusion engine"
+        "quench_sha256": "f542dd36ce05d9cca5f24160dc5c6ead862ce2220f81f66ea6439ba5b487970a",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.0 package, governed Echo SDK capability profile, explicit routing policies, restart-safe performance history, and explicit fallback graph to the asynchronous worker contract without modifying the recovered echo_fusion engine"
       },
       "tests/test_portable_core.py": {
-        "quench_sha256": "f3f6af89ae7b9258a2d61a9359925dc158641c8ed78ca740e7e6b3bc48d13a56",
-        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, bounded repeated runs, and restart no-replay"
+        "quench_sha256": "87541a02d692966dbe7e1f5728f1ed895b96704bf09460c26940dffc2e573e35",
+        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, and restart no-replay"
       },
-      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.4.0-py3-none-any.whl": {
-        "source_revision": "c7505746b578aae3dcd524ab2b218e86f257badd",
-        "sha256": "b144354dc5021937d6d280eeb19cbd0cd89fd2830ea37eee40ff13bcc109aa6c"
+      "tests/test_service_unit.py": {
+        "quench_sha256": "d7c02fb11bfe8fa4e244680124a9d880dcc16d10e2a4e8b21d99eeeff830190f",
+        "changes": "verifies v05 profile selection and isolated run-state, memory, performance, and routing configuration"
+      },
+      "deploy/echo-fusion-worker.service": {
+        "quench_sha256": "d49945ac2c88927e0abf38ed32d1a31b12c2e79b81942fed46dd7952b64bbbee",
+        "changes": "selects the v05 adapter and isolated restart-safe state, memory, performance, and explicit full-40 routing defaults"
+      },
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.0-py3-none-any.whl": {
+        "source_revision": "8b65901d8f037374ad48cbb7ee4bf488d1f1327c",
+        "sha256": "8ba752e781f91599e16ef9609998306a85e3948aaa77f707675e9f279ba2d040"
       }
     }
   },

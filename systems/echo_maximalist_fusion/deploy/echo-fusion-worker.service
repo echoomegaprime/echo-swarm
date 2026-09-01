@@ -9,18 +9,21 @@ User=forge
 WorkingDirectory=/home/forge/echo-maximalist-swarm
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/home/forge/echo-maximalist-swarm/src
-Environment=FUSION_PROFILE=reconstructed_v03
+Environment=FUSION_PROFILE=reconstructed_v05
 Environment=FUSION_SEATS_PATH=/home/forge/echo-maximalist-swarm/config/seats.yaml
 Environment=FUSION_LOG_LEVEL=INFO
 Environment=MAXIMALIST_SDK_BASE_URL=http://127.0.0.1:8000
 Environment=FUSION_GATE_BASE=http://127.0.0.1:8000
-Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v03
-Environment=MAXIMALIST_MEMORY_FILE=/var/lib/echo/maximalist-reconstructed-v03/memory.json
+Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v05
+Environment=MAXIMALIST_MEMORY_FILE=/var/lib/echo/maximalist-reconstructed-v05/memory.json
+Environment=MAXIMALIST_PERFORMANCE_FILE=/var/lib/echo/maximalist-reconstructed-v05/performance.json
+Environment=MAXIMALIST_ROUTING_POLICY=full_40
+Environment=MAXIMALIST_ROUTING_MAX_SEATS=40
 EnvironmentFile=-/etc/echo/echo-fusion-worker.env
 StandardInput=null
 # Bind loopback only — the sole caller is the SDK gate on this same host.
 ExecStart=/home/forge/echo-maximalist-swarm/.venv/bin/python -m uvicorn echo_fusion_worker.app:app --host 127.0.0.1 --port 8157 --log-level info
-StateDirectory=echo/maximalist-reconstructed-v03
+StateDirectory=echo/maximalist-reconstructed-v05
 StateDirectoryMode=0750
 Restart=on-failure
 RestartSec=5
