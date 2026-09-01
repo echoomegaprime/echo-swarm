@@ -1,17 +1,17 @@
 {
   "profile": "MAXIMALIST_RECONSTRUCTED",
   "historical_parity": false,
-  "version": "0.5.1",
+  "version": "0.5.2",
   "source_repository": "maximalist-reconstructed",
   "source_branch": "agent/trinity-anvil-output-v06",
-  "source_revision": "948001e1a79dd828c6d92b8a4b646abb266ed003",
+  "source_revision": "a0bae949d4c63b63feb0db86cefb49aaea231b88",
   "artifact": {
-    "path": "vendor/maximalist_reconstructed-0.5.1-py3-none-any.whl",
-    "bytes": 71435,
-    "sha256": "3429b32525a1721077d57dea250cffa081adbb6e20abf193ca7cc4971e956cb5"
+    "path": "vendor/maximalist_reconstructed-0.5.2-py3-none-any.whl",
+    "bytes": 71758,
+    "sha256": "48b2778a6bd730fbcb8d18013347ba4da6c3f7282950b7eade4e6446ce90f53a"
   },
   "acceptance": {
-    "unit_tests_passed": 84,
+    "unit_tests_passed": 85,
     "clean_install_cli": "passed",
     "configured_seat_count": 40,
     "configured_capability_count": 11,

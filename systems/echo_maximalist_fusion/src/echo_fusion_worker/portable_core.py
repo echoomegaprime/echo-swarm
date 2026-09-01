@@ -1,4 +1,4 @@
-"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.5.1.
+"""Adapter from the provenance-locked Fusion Worker HTTP contract to core 0.5.2.
 
 The portable core is additive: the recovered ``echo_fusion`` engine remains
 untouched and available under its existing profiles. Selecting
@@ -36,8 +36,8 @@ from maximalist_reconstructed import (
 from .factory import register_profile
 
 CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED"
-CORE_VERSION = "0.5.1"
-CORE_SHA = "948001e1a79dd828c6d92b8a4b646abb266ed003"
+CORE_VERSION = "0.5.2"
+CORE_SHA = "a0bae949d4c63b63feb0db86cefb49aaea231b88"
 HISTORICAL_PARITY = False
 SUPPORTED_RUNTIMES = frozenset({"anvil_live", "deterministic_test"})
 SUPPORTED_ROUTING_POLICIES = frozenset(

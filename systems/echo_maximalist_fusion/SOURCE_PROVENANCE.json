@@ -39,7 +39,7 @@
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
         "quench_sha256": "60f1c9c5f014e6f42036b031db2157f35650fb315d8f5506f7448749ca4358a2",
-        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.1 package, governed Echo SDK capability profile, explicit routing policies, restart-safe performance history, explicit fallback graph, and phase-specific ANVIL Trinity output contract to the asynchronous worker contract without modifying the recovered echo_fusion engine"
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.2 package, governed Echo SDK capability profile and measured live input contracts, explicit routing policies, restart-safe performance history, explicit fallback graph, and phase-specific ANVIL Trinity output contract to the asynchronous worker contract without modifying the recovered echo_fusion engine"
       },
       "tests/test_portable_core.py": {
         "quench_sha256": "abe3abac62934949deb5cf701222cd51941923e4aefc30b49e6926bfcc8d6ba6",
@@ -53,9 +53,9 @@
         "quench_sha256": "d49945ac2c88927e0abf38ed32d1a31b12c2e79b81942fed46dd7952b64bbbee",
         "changes": "selects the v05 adapter and isolated restart-safe state, memory, performance, and explicit full-40 routing defaults"
       },
-      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.1-py3-none-any.whl": {
-        "source_revision": "948001e1a79dd828c6d92b8a4b646abb266ed003",
-        "sha256": "3429b32525a1721077d57dea250cffa081adbb6e20abf193ca7cc4971e956cb5"
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.2-py3-none-any.whl": {
+        "source_revision": "a0bae949d4c63b63feb0db86cefb49aaea231b88",
+        "sha256": "48b2778a6bd730fbcb8d18013347ba4da6c3f7282950b7eade4e6446ce90f53a"
       }
     }
   },
