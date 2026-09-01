@@ -3,7 +3,7 @@
   "historical_parity": false,
   "version": "0.5.1",
   "source_repository": "maximalist-reconstructed",
-  "source_branch": "agent/v05-adaptive-memory",
+  "source_branch": "agent/trinity-anvil-output-v06",
   "source_revision": "948001e1a79dd828c6d92b8a4b646abb266ed003",
   "artifact": {
     "path": "vendor/maximalist_reconstructed-0.5.1-py3-none-any.whl",
@@ -11,7 +11,7 @@
     "sha256": "3429b32525a1721077d57dea250cffa081adbb6e20abf193ca7cc4971e956cb5"
   },
   "acceptance": {
-    "unit_tests_passed": 83,
+    "unit_tests_passed": 84,
     "clean_install_cli": "passed",
     "configured_seat_count": 40,
     "configured_capability_count": 11,
