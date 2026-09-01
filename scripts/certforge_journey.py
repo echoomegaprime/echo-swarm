@@ -17,6 +17,16 @@ import sys
 from typing import NoReturn
 
 
+EXPECTED_PORTABLE_CORE_VERSION = "0.5.3"
+EXPECTED_PORTABLE_CORE_SOURCE_REVISION = (
+    "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f"
+)
+EXPECTED_PORTABLE_CORE_WHEEL = (
+    "systems/maximalist_reconstructed_core/vendor/"
+    "maximalist_reconstructed-0.5.3-py3-none-any.whl"
+)
+
+
 CRITICAL_SURFACES = (
     ".codex-plugin/plugin.json",
     ".echo/apps.json",
@@ -47,7 +57,7 @@ CRITICAL_SURFACES = (
     "systems/echo_maximalist_fusion/src/echo_fusion_worker/app.py",
     "systems/echo_maximalist_fusion/src/echo_fusion_worker/portable_core.py",
     "systems/maximalist_reconstructed_core/SOURCE_PROVENANCE.json",
-    "systems/maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.0-py3-none-any.whl",
+    EXPECTED_PORTABLE_CORE_WHEEL,
 )
 
 JSON_SURFACES = (
@@ -186,9 +196,9 @@ def validate_portable_core(provenance: object) -> None:
         fail("portable core profile drifted")
     if provenance.get("historical_parity") is not False:
         fail("portable core must not claim historical parity")
-    if provenance.get("version") != "0.5.0":
+    if provenance.get("version") != EXPECTED_PORTABLE_CORE_VERSION:
         fail("portable core version drifted")
-    if provenance.get("source_revision") != "8b65901d8f037374ad48cbb7ee4bf488d1f1327c":
+    if provenance.get("source_revision") != EXPECTED_PORTABLE_CORE_SOURCE_REVISION:
         fail("portable core source revision drifted")
     artifact = provenance.get("artifact")
     if not isinstance(artifact, dict):
@@ -196,7 +206,14 @@ def validate_portable_core(provenance: object) -> None:
     relative = artifact.get("path")
     if not isinstance(relative, str):
         fail("portable core artifact path is invalid")
-    path = Path("systems/maximalist_reconstructed_core") / relative
+    expected_relative = str(
+        Path(EXPECTED_PORTABLE_CORE_WHEEL).relative_to(
+            "systems/maximalist_reconstructed_core"
+        )
+    ).replace("\\", "/")
+    if relative.replace("\\", "/") != expected_relative:
+        fail("portable core artifact path drifted")
+    path = Path(EXPECTED_PORTABLE_CORE_WHEEL)
     try:
         payload = path.read_bytes()
     except OSError as exc:

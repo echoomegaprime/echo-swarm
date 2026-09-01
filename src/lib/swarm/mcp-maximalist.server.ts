@@ -12,7 +12,7 @@ type McpToolResult = {
   isError?: true;
 };
 
-const DEFAULT_WORKER_BASE = "http://127.0.0.1:8157";
+const DEFAULT_WORKER_BASE = "http://127.0.0.1:8358";
 const WORKER_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_CHARS = 1_000_000;
 const MAX_OBJECTIVE_CHARS = 12_000;
@@ -22,8 +22,8 @@ const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
 const MAX_WALL_SECONDS = 420;
 const REQUIRED_CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED";
-const REQUIRED_CORE_VERSION = "0.5.0";
-const REQUIRED_CORE_SHA = "8b65901d8f037374ad48cbb7ee4bf488d1f1327c";
+const REQUIRED_CORE_VERSION = "0.5.3";
+const REQUIRED_CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f";
 const REQUIRED_ROUTING_POLICIES = new Set([
   "full_40",
   "adaptive",

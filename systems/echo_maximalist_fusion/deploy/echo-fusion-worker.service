@@ -22,7 +22,7 @@ Environment=MAXIMALIST_ROUTING_MAX_SEATS=40
 EnvironmentFile=-/etc/echo/echo-fusion-worker.env
 StandardInput=null
 # Bind loopback only — the sole caller is the SDK gate on this same host.
-ExecStart=/home/forge/echo-maximalist-swarm/.venv/bin/python -m uvicorn echo_fusion_worker.app:app --host 127.0.0.1 --port 8157 --log-level info
+ExecStart=/home/forge/echo-maximalist-swarm/.venv/bin/python -m uvicorn echo_fusion_worker.app:app --host 127.0.0.1 --port 8358 --log-level info
 StateDirectory=echo/maximalist-reconstructed-v05
 StateDirectoryMode=0750
 Restart=on-failure

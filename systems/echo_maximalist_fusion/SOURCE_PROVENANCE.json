@@ -10,7 +10,7 @@
     "unit": "echo-fusion-worker.service",
     "working_directory": "/home/forge/echo-maximalist-swarm",
     "module": "echo_fusion_worker.app:app",
-    "bind": "127.0.0.1:8157"
+    "bind": "127.0.0.1:8358"
   },
   "repository_transformations": {
     "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v05 integration adds an explicit adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",

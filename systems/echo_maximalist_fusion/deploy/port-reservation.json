@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "profile": "MAXIMALIST_RECONSTRUCTED",
+  "historical_parity": false,
+  "node": "forge",
+  "port": 8358,
+  "bind": "127.0.0.1:8358",
+  "service": "echo-fusion-worker-v05.service",
+  "claimed_by": "maximalist-reconstructed-v05-d830ceb-fda3bd7c",
+  "claimed_at": "2026-09-01T09:25:08.728583-07:00",
+  "registry": {
+    "service": "echo-ports",
+    "next_free_endpoint": "POST http://192.168.1.220:8256/ports/next_free",
+    "readback_endpoint": "GET http://192.168.1.220:8256/ports/list",
+    "readback_matched": true,
+    "listener_present_at_claim": false
+  },
+  "protected_existing_services": [
+    {
+      "port": 8157,
+      "service": "echo-reveng-defense.service",
+      "live": true,
+      "must_not_change": true
+    },
+    {
+      "port": 8357,
+      "service": "echo-fusion-worker.service",
+      "live": true,
+      "must_not_change": true
+    }
+  ],
+  "deployment_status": "reserved_not_deployed",
+  "rollback": {
+    "method": "POST",
+    "endpoint": "http://192.168.1.220:8256/ports/release",
+    "body": {
+      "node": "forge",
+      "port": 8358,
+      "claimed_by": "maximalist-reconstructed-v05-d830ceb-fda3bd7c"
+    }
+  },
+  "certification_claim": false
+}

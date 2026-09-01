@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live smoke for the running echo-fusion-worker on 127.0.0.1:8157.
+"""Live smoke for the running echo-fusion-worker-v05 on 127.0.0.1:8358.
 
 Proves the deployed service (not an in-process TestClient) answers: /health,
 /selftest, async run -> poll -> FusionResult, and in-process resume.
@@ -10,7 +10,7 @@ import time
 import urllib.error
 import urllib.request
 
-BASE = "http://127.0.0.1:8157"
+BASE = "http://127.0.0.1:8358"
 fails = 0
 
 
