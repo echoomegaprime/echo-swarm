@@ -1,5 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server";
-import { auth, authConfigured } from "./server";
+import { auth, authConfigured, authExplicitlyDisabled } from "./server";
 
 /**
  * Server-side session resolution (server-only).
@@ -17,7 +17,7 @@ const databaseConfigured = Boolean(process.env.DATABASE_URL?.trim());
 /** Re-export so callers can branch on it without importing `server.ts`. */
 export { authConfigured };
 
-if (databaseConfigured && !authConfigured) {
+if (databaseConfigured && authExplicitlyDisabled) {
   console.error(
     "[auth] DATABASE_URL is set but auth is disabled (VITE_AUTH_ENABLED=false) " +
       "— requireUserId() will reject every request (fail closed) rather than " +
@@ -74,7 +74,7 @@ export async function getSessionUser(
  * Prefer `authMiddleware` (`./middleware`), which calls this for you.
  * - Auth enabled -> the verified session user id; throws
  *   `UnauthorizedError` when signed out. Works in the sandbox preview too (real
- *   sign-in via the baked preview client).
+ *   sign-in via a runtime-injected preview client).
  * - Auth disabled (`VITE_AUTH_ENABLED=false`) + `DATABASE_URL` set -> throw (fail
  *   closed): one shared dev user on a real database would let every visitor
  *   read/write everyone's rows.
@@ -82,6 +82,12 @@ export async function getSessionUser(
  */
 export async function requireUserId(bearerToken?: string): Promise<string> {
   if (!authConfigured) {
+    if (!authExplicitlyDisabled) {
+      throw new Error(
+        "Auth is enabled but the broker credential pair is incomplete — " +
+          "refusing to fall back to the shared dev user.",
+      );
+    }
     if (databaseConfigured) {
       throw new Error(
         "Auth is disabled (VITE_AUTH_ENABLED=false) but DATABASE_URL is set — " +

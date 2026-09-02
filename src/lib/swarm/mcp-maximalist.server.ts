@@ -12,7 +12,7 @@ type McpToolResult = {
   isError?: true;
 };
 
-const DEFAULT_WORKER_BASE = "http://127.0.0.1:8157";
+const DEFAULT_WORKER_BASE = "http://127.0.0.1:8358";
 const WORKER_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_CHARS = 1_000_000;
 const MAX_OBJECTIVE_CHARS = 12_000;
@@ -20,7 +20,35 @@ const MAX_CONTEXT_CHARS = 16_000;
 const MAX_ANSWER_CHARS = 30_000;
 const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
-const MAX_WALL_SECONDS = 420;
+const MAX_WALL_SECONDS = 4_800;
+const REQUIRED_WORKER_SERVICE = "echo-fusion-worker";
+const REQUIRED_WORKER_VERSION = "0.2.5";
+const REQUIRED_CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED";
+const REQUIRED_CORE_VERSION = "0.5.3";
+const REQUIRED_CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f";
+const REQUIRED_ROUTING_POLICIES = new Set([
+  "full_40",
+  "adaptive",
+  "cost_bounded",
+  "latency_bounded",
+  "offline_private",
+  "high_assurance",
+  "canary",
+]);
+const REQUIRED_CAPABILITY_PROFILE = "echo_full_read";
+const REQUIRED_CAPABILITY_IDS = [
+  "echo.arcanum.search",
+  "echo.arcanum.enrich",
+  "echo.knowledge.search",
+  "echo.wolfram.llm",
+  "echo.context.recall",
+  "echo.brain.search",
+  "echo.doctrine.search",
+  "echo.caps.search",
+  "echo.engine.query",
+  "echo.wolfram.health",
+  "echo.dr.phoenix_status",
+] as const;
 const RUN_ID = /^run_[A-Za-z0-9_-]{4,80}$/u;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{1,128}$/u;
 
@@ -35,7 +63,28 @@ const commonOutputSchema = {
     run_id: { type: "string" },
     phase: { type: "string" },
     done: { type: "boolean" },
+    service: { type: "string" },
+    version: { type: "string" },
     profile: { type: "string" },
+    historical_parity: { type: "boolean" },
+    core_version: { type: "string" },
+    core_sha: { type: "string" },
+    provider_mode: { type: "string" },
+    capability_profile: { type: "string" },
+    capability_mode: { type: "string" },
+    capability_ready: { type: "boolean" },
+    ready_capability_count: { type: "integer" },
+    selected_capability_ids: { type: "array", items: { type: "string" } },
+    degraded_capability_ids: { type: "array", items: { type: "string" } },
+    configured_seat_count: { type: "integer" },
+    trinity_separate: { type: "boolean" },
+    routing_policy: { type: "string" },
+    routing_max_seats: { type: "integer" },
+    supported_routing_policies: { type: "array", items: { type: "string" } },
+    performance_persistence: { type: "boolean" },
+    explicit_fallback_configured: { type: "boolean" },
+    claim_topology: { type: "boolean" },
+    coverage_telemetry: { type: "boolean" },
     seats_fingerprint: { type: "string" },
     result: { type: "object" },
     error: { type: "string" },
@@ -61,7 +110,7 @@ export const MAXIMALIST_MCP_TOOLS = [
   {
     name: "swarm_maximalist_health",
     description:
-      "Check the live MAXIMALIST_RECONSTRUCTED Fusion Brain worker, active-run count, profile, and seat-registry fingerprint.",
+      "Check the live MAXIMALIST_RECONSTRUCTED Fusion Brain worker, active-run count, exact core identity, 40-seat registry, and governed Echo capability readiness.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     outputSchema: commonOutputSchema,
     annotations: readOnlyAnnotations,
@@ -69,7 +118,7 @@ export const MAXIMALIST_MCP_TOOLS = [
   {
     name: "swarm_maximalist_start",
     description:
-      "Start an asynchronous Maximalist Fusion Brain run. Returns a run_id immediately; poll swarm_maximalist_result until done. The brain performs independent first passes, finding-bus propagation, dynamic re-tasking, dissent preservation, evidence-weighted arbitration, Trinity fusion, recursive verification, and memory writeback.",
+      "Start an asynchronous Maximalist Fusion Brain run. Returns a run_id immediately; poll swarm_maximalist_result until done. The brain performs bounded Arcanum, Knowledge Forge, Wolfram, Echo memory/doctrine/catalog/engine, and Phoenix grounding before independent first passes, finding propagation, dynamic re-tasking, dissent preservation, evidence-weighted arbitration, separate Trinity fusion, recursive verification, and memory writeback.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -193,6 +242,121 @@ async function workerJson(path: string, init?: RequestInit): Promise<JsonRecord>
     throw new SafeMaximalistError("Maximalist Fusion worker is unavailable.");
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function assertCoreIdentity(body: JsonRecord, options: { requireLive?: boolean } = {}): void {
+  const { requireLive = false } = options;
+  const selectedCapabilities = new Set(
+    Array.isArray(body.selected_capability_ids)
+      ? body.selected_capability_ids.filter((item): item is string => typeof item === "string")
+      : [],
+  );
+  const supportedRoutingPolicies = new Set(
+    Array.isArray(body.supported_routing_policies)
+      ? body.supported_routing_policies.filter((item): item is string => typeof item === "string")
+      : [],
+  );
+  if (
+    body.service !== REQUIRED_WORKER_SERVICE ||
+    body.version !== REQUIRED_WORKER_VERSION ||
+    body.profile !== REQUIRED_CORE_PROFILE ||
+    body.historical_parity !== false ||
+    body.core_version !== REQUIRED_CORE_VERSION ||
+    body.core_sha !== REQUIRED_CORE_SHA ||
+    body.configured_seat_count !== 40 ||
+    body.trinity_separate !== true ||
+    typeof body.routing_policy !== "string" ||
+    !REQUIRED_ROUTING_POLICIES.has(body.routing_policy) ||
+    typeof body.routing_max_seats !== "number" ||
+    !Number.isInteger(body.routing_max_seats) ||
+    body.routing_max_seats < 1 ||
+    body.routing_max_seats > 40 ||
+    supportedRoutingPolicies.size !== REQUIRED_ROUTING_POLICIES.size ||
+    [...REQUIRED_ROUTING_POLICIES].some((policy) => !supportedRoutingPolicies.has(policy)) ||
+    body.performance_persistence !== true ||
+    typeof body.explicit_fallback_configured !== "boolean" ||
+    body.claim_topology !== true ||
+    body.coverage_telemetry !== true ||
+    body.capability_profile !== REQUIRED_CAPABILITY_PROFILE ||
+    body.credential_values_exposed !== false ||
+    REQUIRED_CAPABILITY_IDS.some((id) => !selectedCapabilities.has(id))
+  ) {
+    throw new SafeMaximalistError(
+      "Maximalist Fusion worker identity does not match the certified reconstructed core.",
+    );
+  }
+  if (
+    requireLive &&
+    (body.provider_mode !== "live" ||
+      body.capability_mode !== "live" ||
+      body.capability_ready !== true ||
+      body.ready !== true)
+  ) {
+    throw new SafeMaximalistError(
+      "Maximalist Fusion live execution is blocked by provider or capability readiness.",
+    );
+  }
+}
+
+async function verifiedWorkerHealth(requireLive = false): Promise<JsonRecord> {
+  const body = await workerJson("/health");
+  if (body.ok !== true) {
+    throw new SafeMaximalistError("Maximalist Fusion worker is not healthy.");
+  }
+  assertCoreIdentity(body, { requireLive });
+  return body;
+}
+
+function assertResultIdentity(body: JsonRecord): void {
+  if (body.done !== true) return;
+  const result = asRecord(body.result);
+  const provenance = asRecord(result.provenance);
+  const routing = asRecord(provenance.routing);
+  const coverage = asRecord(result.coverage);
+  const selectedSeatIds = Array.isArray(routing.selected_seat_ids)
+    ? routing.selected_seat_ids.filter((item): item is string => typeof item === "string")
+    : [];
+  const claimClusters = Array.isArray(result.claim_clusters) ? result.claim_clusters : [];
+  const seatContributions = Array.isArray(result.seat_contributions)
+    ? result.seat_contributions
+    : [];
+  const performanceWrites = Array.isArray(result.performance_writes)
+    ? result.performance_writes
+    : [];
+  if (
+    provenance.profile !== REQUIRED_CORE_PROFILE ||
+    provenance.historical_parity !== false ||
+    provenance.core_version !== REQUIRED_CORE_VERSION ||
+    provenance.core_sha !== REQUIRED_CORE_SHA ||
+    provenance.trinity_separate !== true ||
+    provenance.provider_mode !== "live" ||
+    provenance.capability_profile !== REQUIRED_CAPABILITY_PROFILE ||
+    provenance.capability_mode !== "live" ||
+    routing.profile !== REQUIRED_CORE_PROFILE ||
+    routing.historical_parity !== false ||
+    typeof routing.policy !== "string" ||
+    !REQUIRED_ROUTING_POLICIES.has(routing.policy) ||
+    typeof routing.routing_fingerprint !== "string" ||
+    !/^[a-f0-9]{64}$/u.test(routing.routing_fingerprint) ||
+    selectedSeatIds.length < 1 ||
+    selectedSeatIds.length > 40 ||
+    new Set(selectedSeatIds).size !== selectedSeatIds.length ||
+    provenance.seat_count !== selectedSeatIds.length ||
+    coverage.configured_seats !== 40 ||
+    typeof coverage.selected_seats !== "number" ||
+    !Number.isInteger(coverage.selected_seats) ||
+    coverage.selected_seats !== selectedSeatIds.length ||
+    typeof coverage.selection_ratio !== "number" ||
+    !Number.isFinite(coverage.selection_ratio) ||
+    Math.abs(coverage.selection_ratio - selectedSeatIds.length / 40) > Number.EPSILON ||
+    claimClusters.some((item) => typeof item !== "object" || item === null) ||
+    seatContributions.some((item) => typeof item !== "object" || item === null) ||
+    performanceWrites.some((item) => typeof item !== "string" || item.length === 0)
+  ) {
+    throw new SafeMaximalistError(
+      "Maximalist Fusion result provenance does not match the certified reconstructed core.",
+    );
   }
 }
 
@@ -352,6 +516,39 @@ function resultText(body: JsonRecord): string {
     lines.push("", "## Unresolved", "");
     for (const item of unresolved) if (typeof item === "string") lines.push(`- ${item}`);
   }
+  const capabilityResults = Array.isArray(result.capability_results)
+    ? result.capability_results.slice(0, REQUIRED_CAPABILITY_IDS.length)
+    : [];
+  if (capabilityResults.length) {
+    const completed = capabilityResults.filter(
+      (item) => asRecord(item).status === "completed",
+    ).length;
+    const degraded = capabilityResults.filter((item) => {
+      const status = asRecord(item).status;
+      return status !== "completed" && status !== "skipped";
+    }).length;
+    lines.push(
+      "",
+      "## Capability grounding",
+      "",
+      `- Completed: ${completed}`,
+      `- Degraded: ${degraded}`,
+    );
+  }
+  const coverage = asRecord(result.coverage);
+  if (
+    typeof coverage.selected_seats === "number" &&
+    typeof coverage.configured_seats === "number"
+  ) {
+    lines.push(
+      "",
+      "## Fusion coverage",
+      "",
+      `- Seats: ${coverage.selected_seats}/${coverage.configured_seats}`,
+      `- Claim clusters: ${Array.isArray(result.claim_clusters) ? result.claim_clusters.length : 0}`,
+      `- Preserved contribution records: ${Array.isArray(result.seat_contributions) ? result.seat_contributions.length : 0}`,
+    );
+  }
   return lines.join("\n");
 }
 
@@ -362,9 +559,7 @@ export async function handleMaximalistTool(
   const operation = name.replace("swarm_maximalist_", "");
   try {
     if (name === "swarm_maximalist_health") {
-      const body = await workerJson("/health");
-      if (body.ok !== true)
-        throw new SafeMaximalistError("Maximalist Fusion worker is not healthy.");
+      const body = await verifiedWorkerHealth();
       return ok(
         operation,
         body,
@@ -372,13 +567,20 @@ export async function handleMaximalistTool(
           "# Swarm Maximalist Fusion",
           "",
           "**Status:** healthy",
+          `**Worker:** ${String(body.service ?? "unknown")} ${String(body.version ?? "unknown")}`,
           `**Profile:** ${String(body.profile ?? "unknown")}`,
+          `**Core:** ${String(body.core_version ?? "unknown")} @ ${String(body.core_sha ?? "unknown")}`,
+          `**Provider mode:** ${String(body.provider_mode ?? "unknown")}`,
+          `**Routing:** ${String(body.routing_policy ?? "unknown")} (max ${String(body.routing_max_seats ?? "unknown")})`,
+          `**Performance persistence:** ${String(body.performance_persistence ?? false)}`,
+          `**Capabilities:** ${String(body.capability_profile ?? "unknown")} (${String(body.ready_capability_count ?? "unknown")}/${REQUIRED_CAPABILITY_IDS.length} ready)`,
           `**Seats fingerprint:** ${String(body.seats_fingerprint ?? "unknown")}`,
           `**Active runs:** ${String(body.active_runs ?? "unknown")}`,
         ].join("\n"),
       );
     }
     if (name === "swarm_maximalist_start") {
+      await verifiedWorkerHealth(true);
       const body = await workerJson("/run", {
         method: "POST",
         body: JSON.stringify(startPayload(args)),
@@ -404,9 +606,11 @@ export async function handleMaximalistTool(
       if (body.error) {
         throw new SafeMaximalistError("The Maximalist run ended with an error.");
       }
+      assertResultIdentity(body);
       return ok(operation, body, resultText(asRecord(safeJson(body))));
     }
     const id = runId(args);
+    await verifiedWorkerHealth(true);
     const body = await workerJson("/resume", {
       method: "POST",
       body: JSON.stringify({ run_id: id }),
