@@ -23,7 +23,8 @@ from echo_fusion_worker.config import (SeatsConfigError, VALID_PROVIDERS,  # noq
                                        load_seats_dict, seats_fingerprint)
 from echo_fusion_worker.factory import (build_engine, register_profile,  # noqa: E402
                                         clamp_budget, StubModelAdapter,
-                                        MAX_CALLS_CEILING, MAX_COST_CEILING)
+                                        MAX_CALLS_CEILING, MAX_COST_CEILING,
+                                        MAX_WALL_CEILING)
 from echo_fusion_worker.app import create_app  # noqa: E402
 
 
@@ -147,9 +148,11 @@ async def w10_build_engine_unknown_profile_fails_closed():
 
 
 async def w11_budget_clamped_to_ceiling():
-    b = clamp_budget(Budget(max_calls=99999, max_cost_usd=999.0))
+    b = clamp_budget(Budget(max_calls=99999, max_cost_usd=999.0, max_wall_s=99999))
     assert b.max_calls <= MAX_CALLS_CEILING, "max_calls not clamped"
     assert b.max_cost_usd <= MAX_COST_CEILING, "max_cost not clamped"
+    assert MAX_WALL_CEILING == 2400.0, "full-40 hard ceiling must fit the measured single-lane runtime"
+    assert b.max_wall_s == MAX_WALL_CEILING, "max_wall_s not clamped to the full-40 ceiling"
 
 
 async def w12_budget_clamp_leaves_small_budget():

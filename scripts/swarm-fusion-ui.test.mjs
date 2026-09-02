@@ -40,7 +40,7 @@ test("voice playback resets visible state on completion and failure", () => {
   assert.match(voice, /recognition\.onend = null/u);
   assert.match(voice, /if \(ended\) return/u);
   assert.doesNotMatch(voice, /recognition\.abort\(\)/u);
-  assert.match(composer, /budget: \{ max_calls: 120, max_cost_usd: 5, max_wall_s: 420 \}/u);
+  assert.match(composer, /budget: \{ max_calls: 120, max_cost_usd: 5, max_wall_s: 2400 \}/u);
   assert.match(
     composer,
     /aria-label="Stop"[\s\S]{0,600}stopVoiceRef\.current\?\.\(\);[\s\S]{0,200}stopVoiceRef\.current = null/u,

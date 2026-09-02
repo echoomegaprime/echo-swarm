@@ -99,6 +99,14 @@ def test_anvil_transport_timeout_and_context_are_explicitly_bounded(
     assert adapter.num_ctx == 32768
 
 
+def test_full_40_policy_preserves_the_governed_2400_second_budget(tmp_path: Path) -> None:
+    runtime = PortableCoreEngine(runtime="deterministic_test", state_dir=tmp_path)
+    policy = runtime._policy(  # noqa: SLF001 - contract test for the worker policy seam
+        Budget(max_calls=120, max_cost_usd=5, max_wall_s=2400)
+    )
+    assert policy.deadline_seconds == 2400.0
+
+
 def test_worker_round_trip_and_restart_readback(tmp_path: Path) -> None:
     async def exercise() -> tuple[str, dict]:
         runtime = PortableCoreEngine(runtime="deterministic_test", state_dir=tmp_path)

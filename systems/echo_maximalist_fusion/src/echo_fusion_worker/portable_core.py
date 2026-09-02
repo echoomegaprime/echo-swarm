@@ -339,7 +339,7 @@ class PortableCoreEngine:
                 os.environ.get("MAXIMALIST_MAX_OUTPUT_PER_CALL"), 1024, 4096
             ),
             deadline_seconds=self._positive_float(
-                getattr(budget, "max_wall_s", None), 420.0, 420.0
+                getattr(budget, "max_wall_s", None), 600.0, 2_400.0
             ),
             request_timeout_seconds=self._positive_float(
                 os.environ.get("MAXIMALIST_REQUEST_TIMEOUT_SECONDS"), 180.0, 300.0
@@ -399,7 +399,7 @@ class PortableCoreEngine:
         default_budget = type(
             "ResumeBudget",
             (),
-            {"max_calls": 120, "max_cost_usd": 5.0, "max_wall_s": 420.0},
+            {"max_calls": 120, "max_cost_usd": 5.0, "max_wall_s": 2_400.0},
         )()
         result = await self._engine(self._policy(default_budget)).resume(run_id)
         return PortableResult(result)

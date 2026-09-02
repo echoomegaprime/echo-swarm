@@ -25,7 +25,7 @@ const fusionBudget = z
   .object({
     max_calls: z.number().int().min(1).max(120).optional(),
     max_cost_usd: z.number().positive().max(5).optional(),
-    max_wall_s: z.number().positive().max(420).optional(),
+    max_wall_s: z.number().positive().max(2_400).optional(),
   })
   .optional();
 

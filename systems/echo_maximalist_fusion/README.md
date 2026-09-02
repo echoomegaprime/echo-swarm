@@ -73,7 +73,7 @@ configuring the real live provider/capability routes, run:
 ```powershell
 python systems/echo_maximalist_fusion/smoke_live.py `
   --base-url http://127.0.0.1:8358 `
-  --poll-timeout 480
+  --poll-timeout 2460
 ```
 
 The smoke fails closed unless it observes the exact 0.5.3 reconstructed core,
@@ -81,6 +81,12 @@ The smoke fails closed unless it observes the exact 0.5.3 reconstructed core,
 all eleven required Echo SDK read capabilities, live result provenance,
 completed resume readback, and the unknown-run negative control. It rejects
 non-loopback targets and never enables a deterministic provider.
+
+The full-40 route has a server-owned 2,400-second hard wall. This replaces the
+former 420-second ceiling after measured ANVIL evidence showed that a single
+local Ollama lane completed only 13 of 40 independent seats before the old
+deadline. The finite limit, 120-call cap, USD 5 configured-cost cap, and
+non-replay treatment of uncertain calls remain enforced.
 
 ## Activation and certification
 

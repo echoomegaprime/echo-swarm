@@ -32,7 +32,9 @@ MAX_COST_CEILING: float = 5.0     # USD, per run
 # decompose -> first-pass -> trinity-fuse -> verify cycle needs real wall headroom or
 # fusion is cut off before it can synthesize an answer (observed: a 141s run truncated
 # at the old 120s cap and abstained on an empty answer).
-MAX_WALL_CEILING: float = 420.0   # seconds, per run
+# A measured full-40 pass over ANVIL's single local Ollama lane needs more than
+# the former seven-minute ceiling. Keep the limit server-owned and finite.
+MAX_WALL_CEILING: float = 2_400.0  # seconds, per run
 
 
 def clamp_budget(b: Budget | None) -> Budget:

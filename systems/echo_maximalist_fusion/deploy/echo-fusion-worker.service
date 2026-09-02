@@ -19,6 +19,8 @@ Environment=MAXIMALIST_MEMORY_FILE=/var/lib/echo/maximalist-reconstructed-v05/me
 Environment=MAXIMALIST_PERFORMANCE_FILE=/var/lib/echo/maximalist-reconstructed-v05/performance.json
 Environment=MAXIMALIST_ROUTING_POLICY=full_40
 Environment=MAXIMALIST_ROUTING_MAX_SEATS=40
+Environment=MAXIMALIST_PROVIDER_CONCURRENCY=4
+Environment=MAXIMALIST_REQUEST_TIMEOUT_SECONDS=300
 EnvironmentFile=-/etc/echo/echo-fusion-worker.env
 StandardInput=null
 # Bind loopback only — the sole caller is the SDK gate on this same host.

@@ -74,7 +74,7 @@ def test_live_smoke_is_bound_to_the_reconstructed_live_contract() -> None:
 
     assert 'EXPECTED_PROFILE = "MAXIMALIST_RECONSTRUCTED"' in smoke
     assert 'EXPECTED_CORE_VERSION = "0.5.3"' in smoke
-    assert 'EXPECTED_WORKER_VERSION = "0.2.1"' in smoke
+    assert 'EXPECTED_WORKER_VERSION = "0.2.2"' in smoke
     assert 'health.get("historical_parity") is False' in smoke
     assert 'health.get("provider_mode") == "live"' in smoke
     assert 'health.get("capability_mode") == "live"' in smoke
