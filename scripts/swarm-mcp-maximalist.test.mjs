@@ -19,6 +19,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const fakeBearer = ["Bearer", "maximalist-integration-token"].join(" ");
   const fakeApiKey = ["API_KEY", "maximalist-integration-key"].join("=");
   let historicalParity = false;
+  let workerVersion = "0.2.1";
   let providerMode = "live";
   let capabilityMode = "live";
   let capabilityReady = true;
@@ -33,7 +34,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
         JSON.stringify({
           ok: true,
           service: "echo-fusion-worker",
-          version: "0.2.0",
+          version: workerVersion,
           profile: "MAXIMALIST_RECONSTRUCTED",
           historical_parity: historicalParity,
           core_version: "0.5.3",
@@ -227,6 +228,8 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
 
   const health = await rpc(2, "swarm_maximalist_health");
   assert.equal(health.result.structuredContent.ok, true);
+  assert.equal(health.result.structuredContent.service, "echo-fusion-worker");
+  assert.equal(health.result.structuredContent.version, "0.2.1");
   assert.equal(health.result.structuredContent.profile, "MAXIMALIST_RECONSTRUCTED");
   assert.equal(health.result.structuredContent.historical_parity, false);
   assert.equal(health.result.structuredContent.core_version, "0.5.3");
@@ -356,8 +359,14 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   assert.match(rejectedIdentity.result.content[0].text, /identity/i);
   historicalParity = false;
 
+  workerVersion = "0.2.0";
+  const rejectedWorkerVersion = await rpc(14, "swarm_maximalist_health");
+  assert.equal(rejectedWorkerVersion.result.isError, true);
+  assert.match(rejectedWorkerVersion.result.content[0].text, /identity/i);
+  workerVersion = "0.2.1";
+
   const callsBeforeInvalid = workerCalls.length;
-  const invalid = await rpc(14, "swarm_maximalist_result", { run_id: "../../etc/passwd" });
+  const invalid = await rpc(15, "swarm_maximalist_result", { run_id: "../../etc/passwd" });
   assert.equal(invalid.result.isError, true);
   assert.match(invalid.result.content[0].text, /run_id/i);
   assert.equal(workerCalls.length, callsBeforeInvalid, "invalid run ids must fail before fetch");

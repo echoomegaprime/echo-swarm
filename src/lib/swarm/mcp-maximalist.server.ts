@@ -21,6 +21,8 @@ const MAX_ANSWER_CHARS = 30_000;
 const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
 const MAX_WALL_SECONDS = 420;
+const REQUIRED_WORKER_SERVICE = "echo-fusion-worker";
+const REQUIRED_WORKER_VERSION = "0.2.1";
 const REQUIRED_CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED";
 const REQUIRED_CORE_VERSION = "0.5.3";
 const REQUIRED_CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f";
@@ -61,6 +63,8 @@ const commonOutputSchema = {
     run_id: { type: "string" },
     phase: { type: "string" },
     done: { type: "boolean" },
+    service: { type: "string" },
+    version: { type: "string" },
     profile: { type: "string" },
     historical_parity: { type: "boolean" },
     core_version: { type: "string" },
@@ -256,6 +260,8 @@ function assertCoreIdentity(body: JsonRecord, options: { requireLive?: boolean }
       : [],
   );
   if (
+    body.service !== REQUIRED_WORKER_SERVICE ||
+    body.version !== REQUIRED_WORKER_VERSION ||
     body.profile !== REQUIRED_CORE_PROFILE ||
     body.historical_parity !== false ||
     body.core_version !== REQUIRED_CORE_VERSION ||
@@ -565,6 +571,7 @@ export async function handleMaximalistTool(
           "# Swarm Maximalist Fusion",
           "",
           "**Status:** healthy",
+          `**Worker:** ${String(body.service ?? "unknown")} ${String(body.version ?? "unknown")}`,
           `**Profile:** ${String(body.profile ?? "unknown")}`,
           `**Core:** ${String(body.core_version ?? "unknown")} @ ${String(body.core_sha ?? "unknown")}`,
           `**Provider mode:** ${String(body.provider_mode ?? "unknown")}`,
