@@ -29,6 +29,7 @@ def test_service_unit_is_profile_bound_and_state_isolated() -> None:
     ) in unit
     assert "Environment=MAXIMALIST_ROUTING_POLICY=full_40" in unit
     assert "Environment=MAXIMALIST_ROUTING_MAX_SEATS=40" in unit
+    assert "Environment=MAXIMALIST_MAX_INPUT_TOKENS=500000" in unit
     assert "StateDirectory=echo/maximalist-reconstructed-v05" in unit
     assert "StateDirectoryMode=0750" in unit
     assert (
@@ -74,7 +75,7 @@ def test_live_smoke_is_bound_to_the_reconstructed_live_contract() -> None:
 
     assert 'EXPECTED_PROFILE = "MAXIMALIST_RECONSTRUCTED"' in smoke
     assert 'EXPECTED_CORE_VERSION = "0.5.3"' in smoke
-    assert 'EXPECTED_WORKER_VERSION = "0.2.2"' in smoke
+    assert 'EXPECTED_WORKER_VERSION = "0.2.3"' in smoke
     assert 'health.get("historical_parity") is False' in smoke
     assert 'health.get("provider_mode") == "live"' in smoke
     assert 'health.get("capability_mode") == "live"' in smoke

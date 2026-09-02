@@ -20,7 +20,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 DEFAULT_BASE = "http://127.0.0.1:8358"
-EXPECTED_WORKER_VERSION = "0.2.2"
+EXPECTED_WORKER_VERSION = "0.2.3"
 EXPECTED_PROFILE = "MAXIMALIST_RECONSTRUCTED"
 EXPECTED_CORE_VERSION = "0.5.3"
 EXPECTED_CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f"
@@ -239,7 +239,7 @@ def run_smoke(
         {
             "objective": "live smoke: identify the capital of Texas",
             "context": {"verification": "maximalist-reconstructed-live-smoke"},
-            "budget": {"max_calls": 120, "max_cost_usd": 5.0, "max_wall_s": 2_400.0},
+            "budget": {"max_calls": 120, "max_cost_usd": 5.0, "max_wall_s": 4_800.0},
             "idempotency_key": "maximalist-reconstructed-live-smoke-v053",
         },
     )
@@ -292,7 +292,7 @@ def parse_args() -> argparse.Namespace:
         help="explicit loopback worker origin",
     )
     parser.add_argument("--request-timeout", type=float, default=60.0)
-    parser.add_argument("--poll-timeout", type=float, default=2_460.0)
+    parser.add_argument("--poll-timeout", type=float, default=4_860.0)
     parser.add_argument("--poll-interval", type=float, default=0.5)
     args = parser.parse_args()
     if min(args.request_timeout, args.poll_timeout, args.poll_interval) <= 0:

@@ -131,6 +131,6 @@ def test_full_smoke_flow_verifies_resume_and_negative_control(monkeypatch) -> No
     assert not any(path == "/selftest" for _, path, _ in calls)
     start_payload = next(body for method, path, body in calls if method == "POST" and path == "/run")
     assert start_payload is not None
-    assert start_payload["budget"]["max_wall_s"] == 2400.0
+    assert start_payload["budget"]["max_wall_s"] == 4800.0
     assert ("POST", "/resume", {"run_id": RUN_ID}) in calls
     assert calls[-1][:2] == ("GET", "/runs/nope-not-real")

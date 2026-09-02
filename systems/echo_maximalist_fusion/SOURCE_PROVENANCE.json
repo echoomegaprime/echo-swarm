@@ -20,12 +20,12 @@
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-        "quench_sha256": "f51b1c4cd7937d08fedc76ebdabc42d3b6cd4db8ea17f19c64bd4d168e17a181",
-        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, completed durable state after process restart, publishes the resuming transition before asynchronous resume execution, and identifies the measured full-40 contract as worker 0.2.2"
+        "quench_sha256": "abca33ff3560ee41d230f0a62cac1551e94b69c985d17083e667ab7d27395e32",
+        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, completed durable state after process restart, publishes the resuming transition before asynchronous resume execution, and identifies the measured recursive full-40 contract as worker 0.2.3"
       },
       "src/echo_fusion_worker/factory.py": {
-        "quench_sha256": "3d3c554e6f1e6d59f850d3ff8447fe0a8a94903b35df0ed6d356e72a48d437f5",
-        "changes": "raises the finite server-owned wall ceiling from 420 to 2400 seconds after measured ANVIL evidence proved the old limit could complete only 13 of 40 independent seats; call and configured-cost ceilings remain unchanged"
+        "quench_sha256": "171589b183f956f35e4ec4857cb9ad9416f473bbeda7c4328b9d8758ca1733f5",
+        "changes": "sets the finite server-owned wall to 4800 seconds from the measured 70-call recursive graph after live evidence reached Trinity near 2000 seconds; call and configured-cost ceilings remain unchanged"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -40,38 +40,38 @@
         "changes": "the strong-tier cascade control now uses a trusted extractor that explicitly verifies evidence before suppressing elite review"
       },
       "smoke_live.py": {
-        "quench_sha256": "0bb159671658068bc9ff5847d2842263937c788020e1256dc4a8719dd57cacd1",
-        "changes": "replaces the obsolete stub-only check with a loopback-only, fail-closed live release smoke that verifies worker 0.2.2, reconstructed identity, non-parity, provider and capability readiness, bounded full-40 asynchronous completion inside the measured 2400-second wall, result provenance, resume completion, and the unknown-run negative control"
+        "quench_sha256": "2fae2b60e8b2530393deeb550aae17b261c99b7a9b10f06a41abd45386203667",
+        "changes": "replaces the obsolete stub-only check with a loopback-only, fail-closed live release smoke that verifies worker 0.2.3, reconstructed identity, non-parity, provider and capability readiness, bounded full-40 asynchronous completion inside the measured 4800-second wall, result provenance, resume completion, and the unknown-run negative control"
       },
       "tests/test_worker.py": {
-        "quench_sha256": "6a6fa6ba576fdd0c5969fb1b6bdd81a4d8a163941589378eaed7d990dcb24f3a",
-        "changes": "verifies the resume transition contract, polls through completion to compare the persisted answer, and locks the full-40 server wall ceiling to 2400 seconds"
+        "quench_sha256": "d0cb9162ab9859255350e55a04f6e732cc515fe2b393a99e6311f471b523e95d",
+        "changes": "verifies the resume transition contract, polls through completion to compare the persisted answer, and locks the recursive full-40 server wall ceiling to 4800 seconds"
       },
       "README.md": {
-        "quench_sha256": "54ad8a697f320fd74a86412b39c9041652c04f50dca994a0cbd854e08894e4a2",
-        "changes": "documents the exact reconstructed profile boundary, live versus deterministic provider separation, measured 2400-second full-40 wall, verification commands, fail-closed live smoke, certification gates, and additive rollback procedure"
+        "quench_sha256": "290db7e0ab27d44ce809e435b5de90439a64b2efb9c3a257502c5f99c75deecb",
+        "changes": "documents the exact reconstructed profile boundary, live versus deterministic provider separation, measured 4800-second and 500000-input-token recursive full-40 envelope, verification commands, fail-closed live smoke, certification gates, and additive rollback procedure"
       }
     },
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
-        "quench_sha256": "1ce1caf8a4a19d196d3d77ef4306a8fb8ca0876ae069c6e3440ed40f7c8801fa",
-        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.3 package, governed Echo SDK capability profile and measured live input contracts, explicit routing policies, restart-safe performance history, explicit fallback graph, phase-specific ANVIL Trinity output contract, aligned transport timeout, explicit bounded ANVIL context, and the finite 2400-second full-40 deadline to the asynchronous worker contract without modifying the recovered echo_fusion engine"
+        "quench_sha256": "2463954720d8559d637b4d67ba3bccfe89ed7b9cd0d0b0cecfc40bfd9815f771",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.3 package, governed Echo SDK capability profile and measured live input contracts, explicit routing policies, restart-safe performance history, explicit fallback graph, phase-specific ANVIL Trinity output contract, aligned transport timeout, explicit bounded ANVIL context, a 500000-input-token ceiling, and the finite 4800-second recursive full-40 deadline without modifying the recovered echo_fusion engine"
       },
       "tests/test_portable_core.py": {
-        "quench_sha256": "7a886ab0f5d27da5b4f1e4832640adc6c3a1d85d5b0723e8b69378e3f24b91cf",
-        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, restart no-replay, and preservation of the 2400-second governed full-40 budget"
+        "quench_sha256": "35e6ee5e433fc1bcd5d429e648f3cf68c66e41963bdcfc63f6807ae28dad07b2",
+        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, restart no-replay, and preservation of the governed 4800-second and 500000-input-token recursive budget"
       },
       "tests/test_service_unit.py": {
-        "quench_sha256": "7d9f69c096ede6c6e18326abe20dc7e2a3d43f11c935dd02e879d2e80dab3c89",
-        "changes": "verifies v05 profile selection, isolated run-state, memory, performance and routing configuration, and rejects regression of the live smoke to the stub profile"
+        "quench_sha256": "4837cd24c04cefc11c766e79e69f5e96d162d6e742eefc82837793054cdb9b40",
+        "changes": "verifies v05 profile selection, isolated run-state, memory, performance, routing, explicit 500000-input-token configuration, and rejects regression of the live smoke to the stub profile"
       },
       "tests/test_live_smoke.py": {
-        "quench_sha256": "b3a158f6d59d43f6c438d0d0d1a81d8290a07b4dc046c9ccdd67b1e5e3c201d0",
-        "changes": "deterministically verifies the fail-closed live identity contract, loopback boundary, 2400-second full-40 request budget, asynchronous-only complete run and resume path, absence of synchronous self-test use, and negative control without activating fake providers in a live profile"
+        "quench_sha256": "da8777b9b2bd3755273714c615d6213829a44e594fc1de6b9dac5991d2c062b0",
+        "changes": "deterministically verifies the fail-closed live identity contract, loopback boundary, 4800-second recursive full-40 request budget, asynchronous-only complete run and resume path, absence of synchronous self-test use, and negative control without activating fake providers in a live profile"
       },
       "deploy/echo-fusion-worker.service": {
-        "quench_sha256": "bf6efdbfa14831024fdcb82d6f0690501c952268cdcc79a17ded3226751706b9",
-        "changes": "selects the v05 adapter, isolated restart-safe state, memory, performance, explicit full-40 routing, four-request provider queue, and 300-second per-call timeout defaults"
+        "quench_sha256": "3e7bdf66c6ce519f6a115ef62382c6f659ed821a09734830437dfca3ddf66dc6",
+        "changes": "selects the v05 adapter, isolated restart-safe state, memory, performance, explicit full-40 routing, four-request provider queue, 300-second per-call timeout, and 500000-input-token ceiling defaults"
       },
       "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.3-py3-none-any.whl": {
         "source_revision": "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f",

@@ -151,7 +151,7 @@ async def w11_budget_clamped_to_ceiling():
     b = clamp_budget(Budget(max_calls=99999, max_cost_usd=999.0, max_wall_s=99999))
     assert b.max_calls <= MAX_CALLS_CEILING, "max_calls not clamped"
     assert b.max_cost_usd <= MAX_COST_CEILING, "max_cost not clamped"
-    assert MAX_WALL_CEILING == 2400.0, "full-40 hard ceiling must fit the measured single-lane runtime"
+    assert MAX_WALL_CEILING == 4800.0, "full-40 hard ceiling must fit the measured bounded recursive graph"
     assert b.max_wall_s == MAX_WALL_CEILING, "max_wall_s not clamped to the full-40 ceiling"
 
 

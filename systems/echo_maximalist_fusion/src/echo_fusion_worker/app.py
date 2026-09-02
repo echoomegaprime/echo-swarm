@@ -25,7 +25,7 @@ from echo_fusion.schemas import Budget, RunState
 from .config import load_seats, seats_fingerprint
 from .factory import build_engine, clamp_budget
 
-WORKER_VERSION = "0.2.2"
+WORKER_VERSION = "0.2.3"
 WAIT_CAP_SECONDS = 30.0
 
 logging.basicConfig(
