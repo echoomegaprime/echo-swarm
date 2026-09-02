@@ -8,7 +8,6 @@ from typing import Any
 
 import pytest
 
-
 SMOKE_PATH = Path(__file__).resolve().parents[1] / "smoke_live.py"
 SPEC = importlib.util.spec_from_file_location("echo_fusion_live_smoke", SMOKE_PATH)
 assert SPEC is not None and SPEC.loader is not None
@@ -70,7 +69,9 @@ def test_health_contract_accepts_only_ready_reconstructed_live_worker() -> None:
     with pytest.raises(smoke.SmokeFailure, match="capability routes"):
         smoke.validate_health(
             200,
-            live_health(capability_ready=False, degraded_capability_ids=["echo.brain.search"]),
+            live_health(
+                capability_ready=False, degraded_capability_ids=["echo.brain.search"]
+            ),
         )
 
 
@@ -103,12 +104,6 @@ def test_full_smoke_flow_verifies_resume_and_negative_control(monkeypatch) -> No
         calls.append((method, path, body))
         if path == "/health":
             return 200, live_health()
-        if path == "/selftest":
-            return 200, {
-                "ok": True,
-                "answer": "Austin",
-                "profile": "reconstructed_v05",
-            }
         if path == "/run":
             return 202, {"run_id": RUN_ID, "phase": "running"}
         if path == "/resume":
@@ -133,5 +128,6 @@ def test_full_smoke_flow_verifies_resume_and_negative_control(monkeypatch) -> No
         poll_interval=0.001,
     )
 
+    assert not any(path == "/selftest" for _, path, _ in calls)
     assert ("POST", "/resume", {"run_id": RUN_ID}) in calls
     assert calls[-1][:2] == ("GET", "/runs/nope-not-real")

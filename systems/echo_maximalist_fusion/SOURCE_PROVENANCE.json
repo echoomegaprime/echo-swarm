@@ -36,8 +36,8 @@
         "changes": "the strong-tier cascade control now uses a trusted extractor that explicitly verifies evidence before suppressing elite review"
       },
       "smoke_live.py": {
-        "quench_sha256": "08a0c5946579f44b901a33ec19e0a73e6932d07eac905f8881499eab90e2ef40",
-        "changes": "replaces the obsolete stub-only check with a loopback-only, fail-closed live release smoke that verifies reconstructed identity, non-parity, provider and capability readiness, bounded asynchronous completion, result provenance, resume completion, and the unknown-run negative control"
+        "quench_sha256": "b55b198781492ae8c8c346f02b40a42b415dd9f296c8860a10607ae7654d21b7",
+        "changes": "replaces the obsolete stub-only check with a loopback-only, fail-closed live release smoke that verifies reconstructed identity, non-parity, provider and capability readiness, bounded asynchronous completion without invoking the synchronous self-test, result provenance, resume completion, and the unknown-run negative control"
       },
       "tests/test_worker.py": {
         "quench_sha256": "db3364694663726d2e4bcdf7e4c10989c5c7d5f029fadf8b87932628e0401fa7",
@@ -62,8 +62,8 @@
         "changes": "verifies v05 profile selection, isolated run-state, memory, performance and routing configuration, and rejects regression of the live smoke to the stub profile"
       },
       "tests/test_live_smoke.py": {
-        "quench_sha256": "10474f418117d61b0572e1bb3e286f108f0b9850cbc5b74911334376bbad735b",
-        "changes": "deterministically verifies the fail-closed live identity contract, loopback boundary, complete run and resume path, and negative control without activating fake providers in a live profile"
+        "quench_sha256": "ed6ba8743362f4e89dbc550de9570b860ddbaab0c083fc1e6d0fd21c50f0bfec",
+        "changes": "deterministically verifies the fail-closed live identity contract, loopback boundary, asynchronous-only complete run and resume path, absence of synchronous self-test use, and negative control without activating fake providers in a live profile"
       },
       "deploy/echo-fusion-worker.service": {
         "quench_sha256": "d49945ac2c88927e0abf38ed32d1a31b12c2e79b81942fed46dd7952b64bbbee",

@@ -4,6 +4,7 @@
 The smoke talks to the deployed loopback service rather than an in-process test
 client.  It never enables the deterministic provider profile.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -100,11 +101,27 @@ def require(name: str, condition: bool, detail: str) -> None:
 
 def validate_health(status: int, health: dict[str, Any]) -> None:
     selected = health.get("selected_capability_ids")
-    require("health.http", status == 200 and health.get("ok") is True, f"status={status}")
-    require("health.service", health.get("service") == "echo-fusion-worker", "service mismatch")
-    require("health.worker_version", health.get("version") == EXPECTED_WORKER_VERSION, "version mismatch")
-    require("health.profile", health.get("profile") == EXPECTED_PROFILE, "profile mismatch")
-    require("health.non_parity", health.get("historical_parity") is False, "historical parity must be false")
+    require(
+        "health.http", status == 200 and health.get("ok") is True, f"status={status}"
+    )
+    require(
+        "health.service",
+        health.get("service") == "echo-fusion-worker",
+        "service mismatch",
+    )
+    require(
+        "health.worker_version",
+        health.get("version") == EXPECTED_WORKER_VERSION,
+        "version mismatch",
+    )
+    require(
+        "health.profile", health.get("profile") == EXPECTED_PROFILE, "profile mismatch"
+    )
+    require(
+        "health.non_parity",
+        health.get("historical_parity") is False,
+        "historical parity must be false",
+    )
     require(
         "health.core_identity",
         health.get("core_version") == EXPECTED_CORE_VERSION
@@ -113,7 +130,8 @@ def validate_health(status: int, health: dict[str, Any]) -> None:
     )
     require(
         "health.roster",
-        health.get("configured_seat_count") == 40 and health.get("trinity_separate") is True,
+        health.get("configured_seat_count") == 40
+        and health.get("trinity_separate") is True,
         "expected 40 swarm seats and separate Trinity",
     )
     require(
@@ -145,10 +163,18 @@ def validate_health(status: int, health: dict[str, Any]) -> None:
 
 
 def validate_result(result: Any) -> None:
-    require("run.result_object", isinstance(result, dict), "completed run has no result object")
+    require(
+        "run.result_object",
+        isinstance(result, dict),
+        "completed run has no result object",
+    )
     assert isinstance(result, dict)
     provenance = result.get("provenance")
-    require("run.answer", isinstance(result.get("answer"), str) and bool(result["answer"].strip()), "empty answer")
+    require(
+        "run.answer",
+        isinstance(result.get("answer"), str) and bool(result["answer"].strip()),
+        "empty answer",
+    )
     require("run.provenance", isinstance(provenance, dict), "missing provenance")
     assert isinstance(provenance, dict)
     require(
@@ -187,7 +213,9 @@ def poll_complete(
             validate_result(body.get("result"))
             return body
         time.sleep(poll_interval)
-    raise SmokeFailure(f"run did not complete in {poll_timeout:.1f}s; last_phase={last_phase}")
+    raise SmokeFailure(
+        f"run did not complete in {poll_timeout:.1f}s; last_phase={last_phase}"
+    )
 
 
 def run_smoke(
@@ -205,17 +233,6 @@ def run_smoke(
     status, health = call("GET", "/health")
     validate_health(status, health)
 
-    status, selftest = call("POST", "/selftest")
-    require(
-        "selftest",
-        status == 200
-        and selftest.get("ok") is True
-        and isinstance(selftest.get("answer"), str)
-        and bool(selftest["answer"].strip())
-        and selftest.get("profile") == "reconstructed_v05",
-        f"status={status}",
-    )
-
     status, started = call(
         "POST",
         "/run",
@@ -229,7 +246,9 @@ def run_smoke(
     run_id = started.get("run_id")
     require(
         "run.async_start",
-        status == 202 and isinstance(run_id, str) and RUN_ID.fullmatch(run_id) is not None,
+        status == 202
+        and isinstance(run_id, str)
+        and RUN_ID.fullmatch(run_id) is not None,
         f"status={status}",
     )
     assert isinstance(run_id, str)
@@ -244,7 +263,9 @@ def run_smoke(
     status, resumed = call("POST", "/resume", {"run_id": run_id})
     require(
         "resume.accepted",
-        status == 202 and resumed.get("run_id") == run_id and resumed.get("phase") == "resuming",
+        status == 202
+        and resumed.get("run_id") == run_id
+        and resumed.get("phase") == "resuming",
         f"status={status}",
     )
     resumed_result = poll_complete(
