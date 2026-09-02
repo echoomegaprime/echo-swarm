@@ -12,6 +12,15 @@ Independent PR review corrected `src/echo_fusion/arbitration.py` so identical cl
 
 The later `reconstructed_v05` integration is additive. It does not relabel or replace the recovered `echo_fusion` engine. `src/echo_fusion_worker/portable_core.py` adapts the separately versioned wheel under `../maximalist_reconstructed_core/`; that directory binds the wheel to source SHA `de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f` and SHA-256 `defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5`. The app exposes this adapter only when `FUSION_PROFILE=reconstructed_v05`; its existing `stub` and `live` profiles remain distinct. Version 0.5.3 retains deterministic routing receipts, configurable bounded routing, evidence claim topology, coverage telemetry, explicit provider/model fallback configuration, and restart-safe seat-performance history. It includes the phase-specific ANVIL Trinity JSON Schema added in 0.5.1 after the live 0.5.0 canary proved generic JSON could omit the required candidate answer; the governed brain, doctrine, and engine SDK contracts repaired in 0.5.2; and the measured ANVIL transport/context repair that aligns the adapter timeout with the controller and explicitly requests the installed model's 32,768-token context. Model output and capability evidence remain untrusted and claim-grounded. These mechanisms belong to the reconstruction and do not establish historical parity.
 
+Worker 0.2.5 adds a separate durable idempotency boundary after restart testing
+proved the prior in-memory key map could launch a duplicate run. The worker now
+hashes caller keys, binds them to canonical effective requests, serializes
+same-key starts, atomically commits the mapping before scheduling provider work,
+and refuses corrupt, conflicting, dangling, or incomplete restart state. The
+operator-only seeding command accepts only an existing completed
+`MAXIMALIST_RECONSTRUCTED` checkpoint. This repair does not modify the vendored
+0.5.3 core or claim historical parity.
+
 ## Verification
 
 ```powershell

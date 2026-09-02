@@ -17,6 +17,7 @@ Environment=FUSION_GATE_BASE=http://127.0.0.1:8000
 Environment=MAXIMALIST_STATE_DIR=/var/lib/echo/maximalist-reconstructed-v05
 Environment=MAXIMALIST_MEMORY_FILE=/var/lib/echo/maximalist-reconstructed-v05/memory.json
 Environment=MAXIMALIST_PERFORMANCE_FILE=/var/lib/echo/maximalist-reconstructed-v05/performance.json
+Environment=MAXIMALIST_IDEMPOTENCY_FILE=/var/lib/echo/maximalist-reconstructed-v05/idempotency.v1.json
 Environment=MAXIMALIST_ROUTING_POLICY=full_40
 Environment=MAXIMALIST_ROUTING_MAX_SEATS=40
 Environment=MAXIMALIST_PROVIDER_CONCURRENCY=4

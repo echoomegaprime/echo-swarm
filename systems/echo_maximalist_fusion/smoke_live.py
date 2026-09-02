@@ -20,7 +20,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 DEFAULT_BASE = "http://127.0.0.1:8358"
-EXPECTED_WORKER_VERSION = "0.2.4"
+EXPECTED_WORKER_VERSION = "0.2.5"
 EXPECTED_PROFILE = "MAXIMALIST_RECONSTRUCTED"
 EXPECTED_CORE_VERSION = "0.5.3"
 EXPECTED_CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f"
@@ -159,6 +159,12 @@ def validate_health(status: int, health: dict[str, Any]) -> None:
         and bool(health["seats_fingerprint"])
         and isinstance(health.get("active_runs"), int),
         "state identity is incomplete",
+    )
+    require(
+        "health.restart_safe_idempotency",
+        health.get("idempotency_persistent") is True
+        and isinstance(health.get("idempotency_entries"), int),
+        "durable idempotency state is not active",
     )
 
 

@@ -39,6 +39,8 @@ def live_health(**overrides: Any) -> dict[str, Any]:
         "credential_values_exposed": False,
         "seats_fingerprint": "fixed-test-fingerprint",
         "active_runs": 0,
+        "idempotency_persistent": True,
+        "idempotency_entries": 1,
     }
     body.update(overrides)
     return body
@@ -129,7 +131,9 @@ def test_full_smoke_flow_verifies_resume_and_negative_control(monkeypatch) -> No
     )
 
     assert not any(path == "/selftest" for _, path, _ in calls)
-    start_payload = next(body for method, path, body in calls if method == "POST" and path == "/run")
+    start_payload = next(
+        body for method, path, body in calls if method == "POST" and path == "/run"
+    )
     assert start_payload is not None
     assert start_payload["budget"]["max_wall_s"] == 4800.0
     assert ("POST", "/resume", {"run_id": RUN_ID}) in calls

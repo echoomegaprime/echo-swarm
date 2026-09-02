@@ -19,7 +19,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const fakeBearer = ["Bearer", "maximalist-integration-token"].join(" ");
   const fakeApiKey = ["API_KEY", "maximalist-integration-key"].join("=");
   let historicalParity = false;
-  let workerVersion = "0.2.4";
+  let workerVersion = "0.2.5";
   let providerMode = "live";
   let capabilityMode = "live";
   let capabilityReady = true;
@@ -229,7 +229,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const health = await rpc(2, "swarm_maximalist_health");
   assert.equal(health.result.structuredContent.ok, true);
   assert.equal(health.result.structuredContent.service, "echo-fusion-worker");
-  assert.equal(health.result.structuredContent.version, "0.2.4");
+  assert.equal(health.result.structuredContent.version, "0.2.5");
   assert.equal(health.result.structuredContent.profile, "MAXIMALIST_RECONSTRUCTED");
   assert.equal(health.result.structuredContent.historical_parity, false);
   assert.equal(health.result.structuredContent.core_version, "0.5.3");
@@ -363,7 +363,7 @@ test("Echo Swarm exposes the live Maximalist Fusion worker as an async MCP workf
   const rejectedWorkerVersion = await rpc(14, "swarm_maximalist_health");
   assert.equal(rejectedWorkerVersion.result.isError, true);
   assert.match(rejectedWorkerVersion.result.content[0].text, /identity/i);
-  workerVersion = "0.2.4";
+  workerVersion = "0.2.5";
 
   const callsBeforeInvalid = workerCalls.length;
   const invalid = await rpc(15, "swarm_maximalist_result", { run_id: "../../etc/passwd" });

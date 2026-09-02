@@ -15,7 +15,7 @@ worker.
 - 40 configured swarm seats plus a separate three-seat Trinity.
 - Independent first pass, structured finding bus, propagation, dynamic
   re-tasking, explicit dissent, evidence-weighted arbitration, recursive
-  Trinity fusion, and restart-safe state.
+  Trinity fusion, restart-safe run state, and restart-safe request idempotency.
 - Explicit routing policies, bounded calls/cost/time, capability preflight,
   claim-cluster and seat-contribution receipts, and performance persistence.
 - Worker bind: `http://127.0.0.1:8358` only.
@@ -40,7 +40,7 @@ tests. It is never selected implicitly and is not a live fallback.
 | -------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `GET /health`        | Exact reconstructed identity, seat/Trinity topology, provider readiness, capability readiness, and active run count. |
 | `POST /selftest`     | Fixed end-to-end worker self-test under the selected runtime.                                                        |
-| `POST /run`          | Start an asynchronous bounded run; optional `wait=true` is capped.                                                   |
+| `POST /run`          | Start an asynchronous bounded run; optional `wait=true` is capped and idempotency keys are request-bound.            |
 | `GET /runs/{run_id}` | Read active or restart-restored state/result.                                                                        |
 | `POST /resume`       | Publish `resuming`, then resume durable state asynchronously.                                                        |
 
@@ -79,8 +79,19 @@ python systems/echo_maximalist_fusion/smoke_live.py `
 The smoke fails closed unless it observes the exact 0.5.3 reconstructed core,
 `historical_parity=false`, 40 seats, separate Trinity, a ready live provider,
 all eleven required Echo SDK read capabilities, live result provenance,
-completed resume readback, and the unknown-run negative control. It rejects
+durable idempotency, completed resume readback, and the unknown-run negative control. It rejects
 non-loopback targets and never enables a deterministic provider.
+
+Worker 0.2.5 persists only a SHA-256 digest of each idempotency key and binds it
+to a canonical digest of the effective objective, context, and clamped budget.
+The mapping is committed atomically before a background task is scheduled.
+Concurrent same-key requests therefore converge on one run; a key reused for a
+different request is rejected. A corrupt map, a dangling map entry, or an
+incomplete restart-restored run fails closed instead of launching duplicate
+provider work. An operator may seed a pre-existing completed run by piping the
+key to `python -m echo_fusion_worker.idempotency` with `--store`, `--state-dir`,
+`--run-id`, and a `--request-file`; the command validates the exact completed
+`MAXIMALIST_RECONSTRUCTED` checkpoint and is itself idempotent.
 
 The full-40 route has a server-owned 4,800-second hard wall and a 500,000-input-
 token ceiling. Measured ANVIL evidence first showed that the former 420-second
@@ -111,7 +122,7 @@ production certification.
 
 ## Rollback
 
-The review path is additive. Rollback disables the new `echo.fusion.*`
+The review path is additive. Rollback disables the new `echo.fusion.maximalist.*`
 registrations, stops the isolated bridge and v05 worker, and restores routing to
 the previously certified Echo Swarm release. Do not delete durable state or the
 known-good production release during rollback.
