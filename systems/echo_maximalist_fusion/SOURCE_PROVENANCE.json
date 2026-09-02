@@ -20,8 +20,8 @@
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-                "quench_sha256": "697aa179d2f26edf102f9a5aeba61630747d1283612d17ebfd8ba94bf5775898",
-        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, and completed durable state after process restart"
+        "quench_sha256": "b00501cf355cd44cbaa6348cd4ed178e59bcdb40accd61c3a374d188d9c48440",
+        "changes": "idempotent wait:true retries wait for an existing run and return its completed result or error inline; the additive reconstructed_v05 profile receives bounded caller context, reports exact core identity, routing and capability readiness, completed durable state after process restart, and publishes the resuming transition before asynchronous resume execution"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -34,20 +34,36 @@
       "tests/test_invariants.py": {
         "quench_sha256": "c20c1c641819f8f9bf5627d7ff5d6ed8a8c755f9491655b1abeee2955c2be362",
         "changes": "the strong-tier cascade control now uses a trusted extractor that explicitly verifies evidence before suppressing elite review"
+      },
+      "smoke_live.py": {
+        "quench_sha256": "08a0c5946579f44b901a33ec19e0a73e6932d07eac905f8881499eab90e2ef40",
+        "changes": "replaces the obsolete stub-only check with a loopback-only, fail-closed live release smoke that verifies reconstructed identity, non-parity, provider and capability readiness, bounded asynchronous completion, result provenance, resume completion, and the unknown-run negative control"
+      },
+      "tests/test_worker.py": {
+        "quench_sha256": "db3364694663726d2e4bcdf7e4c10989c5c7d5f029fadf8b87932628e0401fa7",
+        "changes": "verifies the resume transition contract and polls through completion to compare the persisted answer"
+      },
+      "README.md": {
+        "quench_sha256": "68d08be29d24aafcff46d5b1002b02040360bca29129f2d22bd1cabd655e8767",
+        "changes": "replaces stale P0 status with the exact reconstructed profile boundary, live versus deterministic provider separation, verification commands, fail-closed live smoke, certification gates, and additive rollback procedure"
       }
     },
     "repository_additions": {
       "src/echo_fusion_worker/portable_core.py": {
-                "quench_sha256": "75b03dbcb8c7629864474400b8e4db1752086fa3f27cf01384c6a581d7c76597",
+        "quench_sha256": "75b03dbcb8c7629864474400b8e4db1752086fa3f27cf01384c6a581d7c76597",
         "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.3 package, governed Echo SDK capability profile and measured live input contracts, explicit routing policies, restart-safe performance history, explicit fallback graph, phase-specific ANVIL Trinity output contract, aligned transport timeout, and explicit bounded ANVIL context to the asynchronous worker contract without modifying the recovered echo_fusion engine"
       },
       "tests/test_portable_core.py": {
-                "quench_sha256": "409b22f64dfd9eb249b4c7341161e578699b4771560883a8a5f941c898d55c2b",
+        "quench_sha256": "409b22f64dfd9eb249b4c7341161e578699b4771560883a8a5f941c898d55c2b",
         "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, and restart no-replay"
       },
       "tests/test_service_unit.py": {
-        "quench_sha256": "d7c02fb11bfe8fa4e244680124a9d880dcc16d10e2a4e8b21d99eeeff830190f",
-        "changes": "verifies v05 profile selection and isolated run-state, memory, performance, and routing configuration"
+        "quench_sha256": "1252314a4515cb9556f72e77ffc7e628456b22f87d7d1ed2ee1cdd89c85cbf2e",
+        "changes": "verifies v05 profile selection, isolated run-state, memory, performance and routing configuration, and rejects regression of the live smoke to the stub profile"
+      },
+      "tests/test_live_smoke.py": {
+        "quench_sha256": "10474f418117d61b0572e1bb3e286f108f0b9850cbc5b74911334376bbad735b",
+        "changes": "deterministically verifies the fail-closed live identity contract, loopback boundary, complete run and resume path, and negative control without activating fake providers in a live profile"
       },
       "deploy/echo-fusion-worker.service": {
         "quench_sha256": "d49945ac2c88927e0abf38ed32d1a31b12c2e79b81942fed46dd7952b64bbbee",

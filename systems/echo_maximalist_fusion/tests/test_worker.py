@@ -269,9 +269,20 @@ async def w22_resume_reruns_in_process():
     async with _client(app) as c:
         run = await c.post("/run", json={"objective": "resume me", "wait": True})
         rid = run.json()["run_id"]
+        original_answer = run.json()["result"]["answer"]
         rr = await c.post("/resume", json={"run_id": rid})
-        assert rr.status_code in (200, 202), f"resume returned {rr.status_code}"
+        assert rr.status_code == 202, f"resume returned {rr.status_code}"
         assert rr.json()["run_id"] == rid
+        assert rr.json()["phase"] == "resuming"
+        for _ in range(100):
+            result = await c.get(f"/runs/{rid}")
+            if result.json()["done"]:
+                break
+            await asyncio.sleep(0.01)
+        body = result.json()
+        assert body["done"] is True, "resumed run did not complete"
+        assert body["error"] is None, f"resumed run failed: {body['error']}"
+        assert body["result"]["answer"] == original_answer
 
 
 TESTS = [

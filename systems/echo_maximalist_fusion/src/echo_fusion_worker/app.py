@@ -25,7 +25,7 @@ from echo_fusion.schemas import Budget, RunState
 from .config import load_seats, seats_fingerprint
 from .factory import build_engine, clamp_budget
 
-WORKER_VERSION = "0.2.0"
+WORKER_VERSION = "0.2.1"
 WAIT_CAP_SECONDS = 30.0
 
 logging.basicConfig(
@@ -160,6 +160,16 @@ def create_app(*, engine: Any, profile: str, fingerprint: str) -> FastAPI:
     async def resume(req: ResumeRequest) -> JSONResponse:
         rid = req.run_id
         log.info("run.resume run_id=%s", rid)
+
+        # Publish the state transition before scheduling the resume task.  A
+        # caller polling immediately after the 202 must never mistake the old
+        # completed record for proof that the new resume attempt completed.
+        app.state.runs[rid] = {
+            "phase": "resuming",
+            "done": False,
+            "result": None,
+            "error": None,
+        }
 
         async def _do_resume() -> None:
             try:
