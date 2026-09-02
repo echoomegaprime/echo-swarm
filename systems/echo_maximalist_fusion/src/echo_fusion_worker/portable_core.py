@@ -217,7 +217,7 @@ class PortableCoreEngine:
                         timeout_seconds=self._positive_float(
                             os.environ.get("MAXIMALIST_REQUEST_TIMEOUT_SECONDS"),
                             180.0,
-                            300.0,
+                            900.0,
                         )
                     ),
                 ),
@@ -342,7 +342,7 @@ class PortableCoreEngine:
                 getattr(budget, "max_wall_s", None), 1_200.0, 4_800.0
             ),
             request_timeout_seconds=self._positive_float(
-                os.environ.get("MAXIMALIST_REQUEST_TIMEOUT_SECONDS"), 180.0, 300.0
+                os.environ.get("MAXIMALIST_REQUEST_TIMEOUT_SECONDS"), 180.0, 900.0
             ),
             retry_limit=0,
             default_provider_concurrency=self._positive_int(

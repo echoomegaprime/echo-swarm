@@ -91,12 +91,17 @@ def test_anvil_runtime_has_40_seats_and_separate_trinity(tmp_path: Path) -> None
 def test_anvil_transport_timeout_and_context_are_explicitly_bounded(
     monkeypatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setenv("MAXIMALIST_REQUEST_TIMEOUT_SECONDS", "240")
+    monkeypatch.setenv("MAXIMALIST_REQUEST_TIMEOUT_SECONDS", "900")
     runtime = PortableCoreEngine(runtime="anvil_live", state_dir=tmp_path)
     adapter = runtime.providers.adapter_for("anvil_ollama")
     assert adapter is not None
-    assert adapter.transport.timeout_seconds == 240
+    assert adapter.transport.timeout_seconds == 900
     assert adapter.num_ctx == 32768
+
+    policy = runtime._policy(  # noqa: SLF001 - contract test for the worker policy seam
+        Budget(max_calls=120, max_cost_usd=5, max_wall_s=4800)
+    )
+    assert policy.request_timeout_seconds == 900
 
 
 def test_full_40_policy_preserves_the_governed_recursive_budget(tmp_path: Path) -> None:

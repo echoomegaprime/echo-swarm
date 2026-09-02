@@ -22,7 +22,7 @@ const MAX_CALLS = 120;
 const MAX_COST_USD = 5;
 const MAX_WALL_SECONDS = 4_800;
 const REQUIRED_WORKER_SERVICE = "echo-fusion-worker";
-const REQUIRED_WORKER_VERSION = "0.2.3";
+const REQUIRED_WORKER_VERSION = "0.2.4";
 const REQUIRED_CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED";
 const REQUIRED_CORE_VERSION = "0.5.3";
 const REQUIRED_CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f";
@@ -254,9 +254,7 @@ function assertCoreIdentity(body: JsonRecord, options: { requireLive?: boolean }
   );
   const supportedRoutingPolicies = new Set(
     Array.isArray(body.supported_routing_policies)
-      ? body.supported_routing_policies.filter(
-          (item): item is string => typeof item === "string",
-        )
+      ? body.supported_routing_policies.filter((item): item is string => typeof item === "string")
       : [],
   );
   if (
@@ -290,12 +288,10 @@ function assertCoreIdentity(body: JsonRecord, options: { requireLive?: boolean }
   }
   if (
     requireLive &&
-    (
-      body.provider_mode !== "live" ||
+    (body.provider_mode !== "live" ||
       body.capability_mode !== "live" ||
       body.capability_ready !== true ||
-      body.ready !== true
-    )
+      body.ready !== true)
   ) {
     throw new SafeMaximalistError(
       "Maximalist Fusion live execution is blocked by provider or capability readiness.",

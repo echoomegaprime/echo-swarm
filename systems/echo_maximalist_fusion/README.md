@@ -88,7 +88,7 @@ wall completed only 13 of 40 independent seats. A subsequent complete first
 pass, finding propagation, retasking, and arbitration reached Trinity near
 2,000 seconds and reserved 249,207 input tokens, proving that the interim
 2,400-second/250,000-token envelope could not cover the bounded recursive
-graph. The finite wall, 120-call cap, USD 5 configured-cost cap, 300-second
+graph. The finite wall, 120-call cap, USD 5 configured-cost cap, 900-second
 per-call timeout, and non-replay treatment of uncertain calls remain enforced.
 
 ## Activation and certification
