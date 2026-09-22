@@ -41,10 +41,9 @@ function authorize(headers, expectedToken) {
   const agent = agentFromHeaders(headers);
   if (!agent) return { ok: false, status: 401, error: "missing_x_echo_agent" };
   if (!APPROVED_AGENTS.has(agent)) return { ok: false, status: 403, error: "agent_not_allowed" };
-  if (expectedToken) {
-    const got = bearerFromHeaders(headers);
-    if (!got || got !== expectedToken) return { ok: false, status: 401, error: "unauthorized" };
-  }
+  if (!expectedToken) return { ok: false, status: 503, error: "swarm_token_unconfigured" };
+  const got = bearerFromHeaders(headers);
+  if (!got || got !== expectedToken) return { ok: false, status: 401, error: "unauthorized" };
   return { ok: true, agent };
 }
 
@@ -61,12 +60,24 @@ describe("swarm mcp-auth", () => {
     assert.equal(r.status, 403);
   });
 
-  it("accepts allowlisted surfaces", () => {
+  it("accepts allowlisted surfaces with the token", () => {
     for (const a of ["grok", "chatgpt", "claude", "codex", "gemini"]) {
-      const r = authorize(new Headers({ "x-echo-agent": a }), undefined);
+      const r = authorize(new Headers({ "x-echo-agent": a, "x-swarm-token": "secret-token-here" }), "secret-token-here");
       assert.equal(r.ok, true);
       assert.equal(r.agent, a);
     }
+  });
+
+  it("fails closed when no token is configured", () => {
+    const r = authorize(new Headers({ "x-echo-agent": "claude" }), undefined);
+    assert.equal(r.ok, false);
+    assert.equal(r.status, 503);
+  });
+
+  it("rejects header-only surface without token", () => {
+    const r = authorize(new Headers({ "x-echo-agent": "claude" }), "secret-token-here");
+    assert.equal(r.ok, false);
+    assert.equal(r.status, 401);
   });
 
   it("enforces bearer when token configured", () => {
