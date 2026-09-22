@@ -9,7 +9,7 @@ provider key).
 
 The roster is a file produced by ``python -m echo_fusion_worker.fleet_lanes build``:
 it discovers live lanes with ``echo.llm.list``, canaries each candidate with a
-16-token probe, keeps the lanes that answer, and records pricing so the core's
+24-token probe, keeps the lanes that answer as themselves within the token cap, and records pricing so the core's
 budget policy can bound every run. Seat readiness (``probe``) is answered from
 that roster, never by spending on a live call during ``/health``.
 """
@@ -121,6 +121,20 @@ def served_mismatch(body: dict[str, Any], provider: str, model: str) -> str | No
     if served_provider != provider or served_model != model:
         return f"served by {served_provider}/{served_model} instead of {provider}/{model}"
     return None
+
+
+CANARY_MAX_TOKENS = 24
+CANARY_PROMPT = "Reply with the single word READY, then count from 1 to 400 separated by spaces."
+
+
+def honors_token_cap(body: dict[str, Any], cap: int, *, slack: int = 8) -> bool:
+    """The core reserves ``max_output_tokens`` per call and aborts the run on overrun, so a lane
+    whose reported completion (e.g. uncapped reasoning tokens) exceeds the cap cannot be seated."""
+    usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}
+    reported = usage.get("completion_tokens", usage.get("output_tokens"))
+    if isinstance(reported, (int, float)):
+        return reported <= cap + slack
+    return len(str(body.get("text") or "")) / 4 <= cap + slack
 
 
 def _usd_per_million(value: Any, *, per_token: bool) -> float | None:
@@ -429,15 +443,17 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
             started = time.monotonic()
             try:
                 body = await gate.invoke("echo.llm.call", {
-                    "provider": provider, "model": model, "prompt": "Reply with the single word: READY",
-                    "max_tokens": 16, "temperature": 0, "purpose": "maximalist_fleet_roster_canary",
+                    "provider": provider, "model": model, "prompt": CANARY_PROMPT,
+                    "max_tokens": CANARY_MAX_TOKENS, "temperature": 0, "purpose": "maximalist_fleet_roster_canary",
                     "allow_reroute": False},
-                    reason=f"MAXIMALIST fleet roster canary (16 tokens) for lane {provider}/{model}", timeout=75)
+                    reason=f"MAXIMALIST fleet roster canary ({CANARY_MAX_TOKENS} tokens) for lane {provider}/{model}", timeout=75)
             except Exception as exc:  # noqa: BLE001 - every failure is recorded, none is fatal
                 return {**record, "ok": False, "error": f"{type(exc).__name__}: {str(exc)[:120]}"}
             latency = int((time.monotonic() - started) * 1000)
         text = str(body.get("text") or "")
         mismatch = served_mismatch(body, provider, model) if body.get("ok") else None
+        if body.get("ok") and not mismatch and not honors_token_cap(body, CANARY_MAX_TOKENS):
+            mismatch = "does not honor max_tokens (reported completion exceeds the reserved cap)"
         ok = bool(body.get("ok")) and not mismatch and "ready" in text.lower()
         return {**record, "ok": ok, "latency_ms": latency,
                 "error": None if ok else str(mismatch or body.get("error") or text[:80] or "no text")[:160]}

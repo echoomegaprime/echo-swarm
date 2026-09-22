@@ -234,3 +234,10 @@ def test_trinity_skips_tiny_models_and_ranks_by_strength() -> None:
     trinity, _ = fleet_lanes.select_trinity_and_planner(lanes)
     assert trinity == ["o::luna", "r::ultra", "c::llama70"]
     assert fleet_lanes.lane_strength(lanes[0]) <= 30
+
+
+def test_token_cap_compliance_excludes_uncapped_reasoning_lanes() -> None:
+    assert fleet_lanes.honors_token_cap({"usage": {"completion_tokens": 24}, "text": "READY 1 2"}, 24)
+    assert not fleet_lanes.honors_token_cap({"usage": {"completion_tokens": 851}, "text": "READY"}, 24)
+    assert fleet_lanes.honors_token_cap({"text": "READY 1 2 3 4 5"}, 24)
+    assert not fleet_lanes.honors_token_cap({"text": "x" * 400}, 24)
