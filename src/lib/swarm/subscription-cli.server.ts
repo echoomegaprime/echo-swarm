@@ -45,6 +45,8 @@ export function subscriptionArguments(provider: Provider, model: string, promptF
         promptFile,
         "--model",
         model,
+        "--reasoning-effort",
+        "low",
         "--output-format",
         "json",
         "--disable-web-search",
