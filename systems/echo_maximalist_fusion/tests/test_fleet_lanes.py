@@ -53,7 +53,7 @@ def test_model_families_are_classified_by_model_not_router() -> None:
     assert fleet_lanes.model_family("openrouter", "google/gemini-3.5-flash") == "google"
     assert fleet_lanes.model_family("together", "meta-llama/Llama-3.3-70B-Instruct-Turbo") == "meta"
     assert fleet_lanes.model_family("sambanova", "Meta-Llama-3.3-70B-Instruct") == "meta"
-    assert fleet_lanes.model_family("groq", "openai/gpt-oss-20b") == "openai_oss"
+    assert fleet_lanes.model_family("groq", "openai/gpt-oss-20b") == "openai"
     assert fleet_lanes.model_family("fireworks", "accounts/fireworks/models/kimi-k2p6") == "moonshot"
     assert fleet_lanes.model_family("together", "deepcogito/cogito-v1-preview-qwen-32B") == "qwen"
 
@@ -202,7 +202,7 @@ def test_trinity_prefers_strongest_published_lane_under_the_cap() -> None:
          "input_usd_per_million": 0.4, "output_usd_per_million": 1.6, "pricing_source": "published_per_token"},
     ]
     trinity, planner = fleet_lanes.select_trinity_and_planner(lanes)
-    assert trinity == ["a::claude-opus", "o::gemini", "o::gpt-luna"]
+    assert set(trinity) == {"a::claude-opus", "o::gemini", "o::gpt-luna"}
     assert planner == "o::gpt-mini"
 
 
@@ -216,3 +216,21 @@ def test_silent_router_fallback_is_rejected(tmp_path: Path) -> None:
     same = _FakeGate({"ok": True, "text": "ok", "provider": "openrouter", "model": "anthropic/claude-opus-4-8"})
     assert asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=same).complete(
         _request("openrouter::anthropic/claude-opus-4-8"))).text == "ok"
+
+
+def test_trinity_skips_tiny_models_and_ranks_by_strength() -> None:
+    lanes = [
+        {"ref": "t::qwen-1.5b", "model": "arize-ai/qwen-2-1.5b-instruct", "family": "qwen",
+         "input_usd_per_million": 0.1, "output_usd_per_million": 0.1, "pricing_source": "published_per_token"},
+        {"ref": "o::luna", "model": "gpt-5.6-luna", "family": "openai",
+         "input_usd_per_million": 1, "output_usd_per_million": 6, "pricing_source": "published_per_token"},
+        {"ref": "r::ultra", "model": "nvidia/nemotron-3-ultra-550b-a55b:free", "family": "nvidia",
+         "input_usd_per_million": 0, "output_usd_per_million": 0, "pricing_source": "published_per_token"},
+        {"ref": "c::llama70", "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "family": "meta",
+         "input_usd_per_million": 15, "output_usd_per_million": 75, "pricing_source": "unpriced_conservative_estimate"},
+        {"ref": "c::oss", "model": "@cf/openai/gpt-oss-120b", "family": "openai",
+         "input_usd_per_million": 15, "output_usd_per_million": 75, "pricing_source": "unpriced_conservative_estimate"},
+    ]
+    trinity, _ = fleet_lanes.select_trinity_and_planner(lanes)
+    assert trinity == ["o::luna", "r::ultra", "c::llama70"]
+    assert fleet_lanes.lane_strength(lanes[0]) <= 30

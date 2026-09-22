@@ -52,7 +52,6 @@ _NON_CHAT = re.compile(
 _FAMILY_RULES: tuple[tuple[str, str], ...] = (
     (r"claude|anthropic", "anthropic"),
     (r"gemini|gemma|google", "google"),
-    (r"gpt-oss", "openai_oss"),
     (r"(^|[/._-])(gpt|o[134]|chatgpt|openai)", "openai"),
     (r"grok|x-ai|xai", "xai"),
     (r"deepseek", "deepseek"),
@@ -334,26 +333,45 @@ _PLANNER_MODELS = ("gpt-4.1-mini", "gpt-4o-mini", "llama-3.3-70b", "gemini-3-fla
 _TRINITY_MAX_OUTPUT_USD_PER_MILLION = 30.0
 
 
+_TINY = re.compile(r"(^|[^0-9.])(0\.\d+|1|1\.5|2|3)b(\b|[-_])", re.IGNORECASE)
+_FRONTIER = ((r"gpt-5|claude-(opus|sonnet|fable)|grok-[4-9]", 1000), (r"gemini-3", 800),
+             (r"(^|/)gpt-4(o|\.1)(?!-mini)", 500), (r"inkling|kimi-k2", 300))
+
+
+def lane_strength(lane: dict[str, Any]) -> float:
+    """Rough capability proxy for Trinity/planner choice: frontier markers, else parameter count."""
+    model = str(lane["model"]).lower()
+    score = 0.0
+    for pattern, value in _FRONTIER:
+        if re.search(pattern, model):
+            score = max(score, float(value))
+    sizes = [float(size) for size in re.findall(r"(\d+(?:\.\d+)?)b(?![a-z])", model)]
+    score = max(score, max(sizes, default=0.0))
+    if re.search(r"mini|nano|micro|lite", model) or _TINY.search(model):
+        score = min(score, 30.0)
+    return score
+
+
 def select_trinity_and_planner(lanes: list[dict[str, Any]]) -> tuple[list[str], str]:
-    """Trinity: three distinct families, strongest priced lane in each (published pricing only,
-    capped so an ultra-premium lane is not chosen by default). Planner: a cheap, JSON-reliable lane."""
-    priced = [lane for lane in lanes if lane.get("pricing_source", "").startswith("published")
-              and float(lane["output_usd_per_million"]) <= _TRINITY_MAX_OUTPUT_USD_PER_MILLION]
-    pool = priced or list(lanes)
-    trinity: list[dict[str, Any]] = []
-    for family in (*_TRINITY_PREFERENCE, *sorted({lane["family"] for lane in pool})):
-        if len(trinity) == 3:
-            break
-        if family in {item["family"] for item in trinity}:
-            continue
-        options = [lane for lane in pool if lane["family"] == family]
-        if options:
-            trinity.append(max(options, key=lambda lane: (float(lane["output_usd_per_million"]),
-                                                           -int(lane.get("latency_ms", 0)))))
+    """Trinity: the three strongest distinct families (strongest lane in each; ultra-premium
+    published lanes above the cap are skipped). Planner: a cheap, JSON-reliable lane."""
+    pool = [lane for lane in lanes
+            if not (lane.get("pricing_source", "").startswith("published")
+                    and float(lane["output_usd_per_million"]) > _TRINITY_MAX_OUTPUT_USD_PER_MILLION)]
+    best_by_family: dict[str, dict[str, Any]] = {}
+    for lane in pool:
+        current = best_by_family.get(lane["family"])
+        if current is None or (lane_strength(lane), -int(lane.get("latency_ms", 0))) > (
+                lane_strength(current), -int(current.get("latency_ms", 0))):
+            best_by_family[lane["family"]] = lane
+    ranked = sorted(best_by_family.values(), key=lambda lane: -lane_strength(lane))
+    trinity = [lane for lane in ranked if lane_strength(lane) > 30][:3]
+    if len(trinity) < 3:
+        trinity = ranked[:3]
     if len(trinity) < 3:
         raise ValueError("fleet roster cannot seat a three-family Trinity")
     planner = next((lane for marker in _PLANNER_MODELS for lane in lanes if marker in lane["model"].lower()),
-                   None) or min(pool, key=lambda lane: float(lane["output_usd_per_million"]) or 1e9)
+                   None) or max(pool, key=lane_strength)
     return [lane["ref"] for lane in trinity], planner["ref"]
 
 
