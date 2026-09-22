@@ -45,6 +45,14 @@ SEAT_COUNT = 40
 # budget policy over-counts rather than silently treating them as free.
 UNPRICED_INPUT_USD_PER_MILLION = 15.0
 UNPRICED_OUTPUT_USD_PER_MILLION = 75.0
+# Rounded-up list prices (USD per million tokens) for catalog lanes that publish no pricing.
+# A flat $15/$75 guess exhausted the $5 run budget after ~20 cheap Workers AI calls.
+_LIST_PRICE_ESTIMATES: tuple[tuple[str, str, float, float], ...] = (
+    (r"^openai$", r"gpt-4o-mini|gpt-4\.1-mini", 0.15, 0.6),
+    (r"^openai$", r"gpt-4o|gpt-4\.1", 2.5, 10.0),
+    (r"^cloudflare$", r".", 0.5, 3.0),
+    (r"^groq$", r".", 0.8, 1.0),
+)
 _NON_CHAT = re.compile(
     r"audio|transcri|nova-3|parakeet|guard|image|embed|whisper|tts|rerank|lora|vision-only|safeguard",
     re.IGNORECASE,
@@ -170,6 +178,11 @@ def lane_pricing(lane: dict[str, Any]) -> tuple[float, float, str]:
                 return rate_in, rate_out, "published_per_million"
     if str(lane.get("provider", "")).startswith("ollama-local"):
         return 0.0, 0.0, "local_zero_cost"
+    provider = str(lane.get("provider", "")).lower()
+    model = str(lane.get("model_id") or lane.get("model") or "").lower()
+    for provider_pattern, model_pattern, rate_in, rate_out in _LIST_PRICE_ESTIMATES:
+        if re.search(provider_pattern, provider) and re.search(model_pattern, model):
+            return rate_in, rate_out, "provider_list_estimate"
     return UNPRICED_INPUT_USD_PER_MILLION, UNPRICED_OUTPUT_USD_PER_MILLION, "unpriced_conservative_estimate"
 
 
@@ -398,6 +411,9 @@ def reselect_roster(path: Path) -> dict[str, Any]:
     lanes = [lane for lane in document["lanes"] if not _ROUTER_ALIAS.search(lane["model"])]
     for lane in lanes:
         lane["family"] = model_family(lane["provider"], lane["model"])
+        if lane.get("pricing_source") == "unpriced_conservative_estimate":
+            rate_in, rate_out, source = lane_pricing({"provider": lane["provider"], "model_id": lane["model"]})
+            lane.update(input_usd_per_million=rate_in, output_usd_per_million=rate_out, pricing_source=source)
     document["lanes"] = lanes
     document["trinity"], document["planner"] = select_trinity_and_planner(lanes)
     temporary = path.with_suffix(".tmp")

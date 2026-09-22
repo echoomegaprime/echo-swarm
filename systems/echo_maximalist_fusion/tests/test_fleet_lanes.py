@@ -242,3 +242,11 @@ def test_token_cap_compliance_excludes_uncapped_reasoning_lanes() -> None:
     assert not fleet_lanes.honors_token_cap({"usage": {"completion_tokens": 2926}, "text": "READY"}, cap)
     assert fleet_lanes.honors_token_cap({"text": "READY " * 50}, cap)
     assert not fleet_lanes.honors_token_cap({"text": "x" * 8000}, cap)
+
+
+def test_list_price_estimates_replace_the_flat_guess_for_known_providers() -> None:
+    assert fleet_lanes.lane_pricing({"provider": "cloudflare", "model_id": "@cf/meta/llama-3.3-70b"}) == (
+        0.5, 3.0, "provider_list_estimate")
+    assert fleet_lanes.lane_pricing({"provider": "openai", "model_id": "gpt-4o"})[:2] == (2.5, 10.0)
+    assert fleet_lanes.lane_pricing({"provider": "openai", "model_id": "gpt-4o-mini"})[:2] == (0.15, 0.6)
+    assert fleet_lanes.lane_pricing({"provider": "mystery", "model_id": "x"})[2] == "unpriced_conservative_estimate"
