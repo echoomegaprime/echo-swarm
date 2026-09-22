@@ -204,3 +204,15 @@ def test_trinity_prefers_strongest_published_lane_under_the_cap() -> None:
     trinity, planner = fleet_lanes.select_trinity_and_planner(lanes)
     assert trinity == ["a::claude-opus", "o::gemini", "o::gpt-luna"]
     assert planner == "o::gpt-mini"
+
+
+def test_silent_router_fallback_is_rejected(tmp_path: Path) -> None:
+    roster = fleet_lanes.FleetRoster.load(_roster(tmp_path))
+    gate = _FakeGate({"ok": True, "text": "answer", "provider": "openrouter", "model": "openrouter/free"})
+    with pytest.raises(ProviderError, match="instead of openrouter/anthropic/claude-opus-4-8"):
+        asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=gate).complete(
+            _request("openrouter::anthropic/claude-opus-4-8")))
+    assert gate.calls[0][1]["allow_reroute"] is False
+    same = _FakeGate({"ok": True, "text": "ok", "provider": "openrouter", "model": "anthropic/claude-opus-4-8"})
+    assert asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=same).complete(
+        _request("openrouter::anthropic/claude-opus-4-8"))).text == "ok"

@@ -114,6 +114,16 @@ def _unwrap(payload: Any) -> dict[str, Any]:
     return body if isinstance(body, dict) else {"ok": False, "error": "gate returned a non-object body"}
 
 
+def served_mismatch(body: dict[str, Any], provider: str, model: str) -> str | None:
+    """The gate's router can silently fall back (e.g. a paid OpenRouter lane on 402 is served
+    by ``openrouter/free``). A seat is only independent evidence if the requested lane answered."""
+    served_provider = str(body.get("provider") or provider)
+    served_model = str(body.get("model") or model)
+    if served_provider != provider or served_model != model:
+        return f"served by {served_provider}/{served_model} instead of {provider}/{model}"
+    return None
+
+
 def _usd_per_million(value: Any, *, per_token: bool) -> float | None:
     try:
         number = float(value)
@@ -235,13 +245,16 @@ class FleetGateAdapter:
             "echo.llm.call",
             {"provider": provider, "model": model, "prompt": prompt,
              "max_tokens": int(request.max_output_tokens), "temperature": 0 if trinity else 0.3,
-             "purpose": f"maximalist_fleet:{request.phase}:{request.seat_id}"},
+             "purpose": f"maximalist_fleet:{request.phase}:{request.seat_id}", "allow_reroute": False},
             reason=f"MAXIMALIST fleet_live seat {request.seat_id} ({request.role}) via lane {provider}/{model}",
         )
         if not body.get("ok"):
             error = str(body.get("error") or "llm_call_failed")[:200]
             retryable = any(token in error.lower() for token in ("timeout", "429", "rate", "shed", "503", "502"))
             raise ProviderError(f"fleet lane {provider}/{model}: {error}", retryable=retryable)
+        mismatch = served_mismatch(body, provider, model)
+        if mismatch:
+            raise ProviderError(f"fleet lane {provider}/{model} {mismatch}", retryable=False)
         text = body.get("text")
         if not isinstance(text, str) or not text.strip():
             raise ProviderError(f"fleet lane {provider}/{model} returned no text")
@@ -399,15 +412,17 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
             try:
                 body = await gate.invoke("echo.llm.call", {
                     "provider": provider, "model": model, "prompt": "Reply with the single word: READY",
-                    "max_tokens": 16, "temperature": 0, "purpose": "maximalist_fleet_roster_canary"},
+                    "max_tokens": 16, "temperature": 0, "purpose": "maximalist_fleet_roster_canary",
+                    "allow_reroute": False},
                     reason=f"MAXIMALIST fleet roster canary (16 tokens) for lane {provider}/{model}", timeout=75)
             except Exception as exc:  # noqa: BLE001 - every failure is recorded, none is fatal
                 return {**record, "ok": False, "error": f"{type(exc).__name__}: {str(exc)[:120]}"}
             latency = int((time.monotonic() - started) * 1000)
         text = str(body.get("text") or "")
-        ok = bool(body.get("ok")) and "ready" in text.lower()
+        mismatch = served_mismatch(body, provider, model) if body.get("ok") else None
+        ok = bool(body.get("ok")) and not mismatch and "ready" in text.lower()
         return {**record, "ok": ok, "latency_ms": latency,
-                "error": None if ok else str(body.get("error") or text[:80] or "no text")[:160]}
+                "error": None if ok else str(mismatch or body.get("error") or text[:80] or "no text")[:160]}
 
     results = await asyncio.gather(*(canary(lane) for lane in candidates))
     passing = sorted((item for item in results if item["ok"]), key=lambda item: (item["family"], item["latency_ms"]))
