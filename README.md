@@ -16,6 +16,10 @@ Open `http://localhost:8080`. Connect labs, select a purpose and mode, brief the
 
 Build the authoritative private OAuth edition with `npm run build:private`; build the distributable bring-your-own-key edition with `npm run build:public`. See [docs/EDITIONS.md](docs/EDITIONS.md).
 
+OAuth client secrets are runtime-only. The current-tree boundary and the
+required rotation/history follow-up for a removed preview credential are
+recorded in [docs/PREVIEW_OAUTH_SECURITY.md](docs/PREVIEW_OAUTH_SECURITY.md).
+
 ## Interactive chat
 
 - Purpose controls bring models into the visible conversation for brainstorm, debate, build, review, evidence validation, advisory certification review, planning, and reporting.
@@ -68,14 +72,16 @@ The MCP catalog now includes `swarm_certificate_status` and `swarm_certificate_a
 
 ### Maximalist Fusion Brain
 
-The MCP endpoint also exposes the asynchronous `MAXIMALIST_RECONSTRUCTED` workflow backed by the loopback Fusion worker. The clean FORGE source tree for that worker and its engine is preserved at [`systems/echo_maximalist_fusion`](systems/echo_maximalist_fusion), bound to its source Git SHA and per-file hashes:
+The MCP endpoint also exposes the asynchronous `MAXIMALIST_RECONSTRUCTED` workflow backed by the loopback Fusion worker. The clean FORGE source tree for the earlier worker and its engine remains preserved at [`systems/echo_maximalist_fusion`](systems/echo_maximalist_fusion), bound to its source Git SHA and per-file hashes. The additive [`systems/maximalist_reconstructed_core`](systems/maximalist_reconstructed_core) integration binds the portable 0.5.3 core to exact runtime source SHA `de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f` without silently replacing that recovered source:
 
-1. `swarm_maximalist_health` verifies the worker profile and seat registry.
-2. `swarm_maximalist_start` starts a bounded deep-fusion run and returns a `run_id` immediately.
-3. `swarm_maximalist_result` polls that run and returns a chat-ready fused answer with confidence, preserved dissent, unresolved uncertainty, and structured provenance.
+1. `swarm_maximalist_health` verifies `MAXIMALIST_RECONSTRUCTED`, `historical_parity: false`, core version/SHA, 40 seats, separate Trinity, provider readiness, and the governed 11-capability profile.
+2. `swarm_maximalist_start` rechecks that exact live identity, starts a bounded deep-fusion run, and returns a `run_id` immediately.
+3. `swarm_maximalist_result` polls that run and returns a chat-ready fused answer with confidence, preserved dissent, unresolved uncertainty, routing receipts, evidence-weighted claim clusters, seat contributions, persisted performance receipts, and structured provenance.
 4. `swarm_maximalist_resume` resumes persisted run state after a worker interruption.
 
-Set `FUSION_WORKER_BASE` to the worker's loopback origin (default `http://127.0.0.1:8157`). Non-loopback origins and caller-supplied worker addresses are rejected.
+Set `FUSION_WORKER_BASE` to the worker's reserved loopback origin (default `http://127.0.0.1:8358`). Non-loopback origins and caller-supplied worker addresses are rejected. Select the new adapter with `FUSION_PROFILE=reconstructed_v05` and explicitly set `MAXIMALIST_RUNTIME=anvil_live`; `deterministic_test` is an offline verification mode and the plugin will not accept it for a live start or resume. Routing is explicit (`MAXIMALIST_ROUTING_POLICY`, default `full_40`) and bounded by `MAXIMALIST_ROUTING_MAX_SEATS`. Memory, performance history, run state, and request-bound idempotency records use separate restart-safe files. Idempotency mappings are atomically committed before provider work is scheduled, persist only hashed client keys, reject key reuse with different input, and fail closed on corruption or dangling state. An optional `MAXIMALIST_FALLBACK_CONFIG` may define a provider/model fallback graph; fallback remains explicit and a provider failure never turns into deterministic fake live output.
+
+`MAXIMALIST_CAPABILITY_PROFILE=echo_full_read` is the integration default. Live capability calls use `MAXIMALIST_SDK_BASE_URL` (falling back to the existing `FUSION_GATE_BASE`) and a runtime-only Echo credential reference. Capability scope or availability failures remain visible and degrade independently; they never trigger a fake live fallback.
 
 ### Recovered Echo Swarm Brain
 

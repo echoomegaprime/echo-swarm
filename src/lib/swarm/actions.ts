@@ -12,6 +12,7 @@ import {
 } from "./oauth.server";
 import { handleMaximalistTool } from "./mcp-maximalist.server";
 import { authModesForEdition } from "./edition";
+import { publicModelCatalog } from "./model-catalog.server";
 
 const modelId = z.enum(MODEL_IDS);
 
@@ -25,7 +26,7 @@ const fusionBudget = z
   .object({
     max_calls: z.number().int().min(1).max(120).optional(),
     max_cost_usd: z.number().positive().max(5).optional(),
-    max_wall_s: z.number().positive().max(420).optional(),
+    max_wall_s: z.number().positive().max(4_800).optional(),
   })
   .optional();
 
@@ -110,6 +111,8 @@ const turnInput = z.object({
 export const getProviderStatus = createServerFn({ method: "GET" }).handler(async () =>
   providerStatus(),
 );
+
+export const getPublicModelCatalog = createServerFn({ method: "GET" }).handler(publicModelCatalog);
 
 export const sendSwarmTurn = createServerFn({ method: "POST" })
   .validator(turnInput)

@@ -24,8 +24,8 @@
  *     `requireUserId` resolves a dev user with no database configured, and
  *     throws fail-closed once `DATABASE_URL` is set (see `verify.server.ts`).
  *
- * NEVER import this from client code — it pulls in `pg` + the preview secret +
- * server-only Better Auth internals. The client uses `@/lib/auth/client`;
+ * NEVER import this from client code — it pulls in `pg` and server-only Better
+ * Auth internals. The client uses `@/lib/auth/client`;
  * components read the user via `@/lib/auth/use-current-user`; server functions get
  * a verified id via `@/lib/auth/middleware`.
  */
@@ -43,7 +43,6 @@ import {
   GROK_ISSUER_DEFAULT,
   PREVIEW_ALLOWED_HOSTS,
   PREVIEW_CLIENT_ID,
-  PREVIEW_CLIENT_SECRET,
 } from "./preview";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
@@ -71,18 +70,33 @@ const env = (key: string): string | undefined => {
 
 // Explicit off-switch. The deployer sets `VITE_AUTH_ENABLED=true` when it
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
-const authDisabled = env("VITE_AUTH_ENABLED") === "false";
+export const authExplicitlyDisabled = env("VITE_AUTH_ENABLED") === "false";
 
-// Broker federation creds: the deployer injects a per-app client when deployed;
-// otherwise fall back to the shared live-preview client, which the broker accepts
-// for any `*.grok-sandbox.com` callback (see `./preview`).
+// Broker federation credentials are resolved as complete pairs. A partial
+// deployed pair must not silently mix with preview credentials. The preview
+// secret is runtime-only and is never committed or bundled.
 const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
-const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
-const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
+const deployedClientId = env("GROK_AUTH_CLIENT_ID");
+const deployedClientSecret = env("GROK_AUTH_CLIENT_SECRET");
+const deployedClientRequested = Boolean(deployedClientId || deployedClientSecret);
+const previewClientId = env("GROK_PREVIEW_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
+const previewClientSecret = env("GROK_PREVIEW_CLIENT_SECRET");
+const grokClientId = deployedClientRequested ? deployedClientId : previewClientId;
+const grokClientSecret = deployedClientRequested
+  ? deployedClientSecret
+  : previewClientSecret;
+const authCredentialPairComplete = Boolean(grokClientId && grokClientSecret);
 
 /** True when federated sign-in is active (real auth is enforced). */
 export const authConfigured =
-  !authDisabled && Boolean(grokClientId && grokClientSecret);
+  !authExplicitlyDisabled && authCredentialPairComplete;
+
+if (!authExplicitlyDisabled && !authCredentialPairComplete) {
+  console.error(
+    "[auth] Sign-in is enabled but the selected broker credential pair is incomplete; " +
+      "federated auth and dev-user fallback are disabled until runtime configuration is complete.",
+  );
+}
 
 // This app's own Better Auth origin. When deployed the deployer injects the
 // public URL. In the sandbox live preview there's no fixed URL (each preview gets

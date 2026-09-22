@@ -6,9 +6,20 @@ The import deliberately excludes the nested `.git` directory, virtual environmen
 
 The committed systemd unit describes a default `stub` profile. FORGE's optional protected environment file currently overrides runtime configuration; its contents are not repository material. Use the live `/health` response and seat fingerprint as the runtime source of truth.
 
-The Echo Swarm web/MCP application does not expose a caller-supplied worker address. Its bridge accepts only a configured loopback origin, defaults to `127.0.0.1:8157`, clamps budget inputs, redacts returned secrets, and polls runs by validated ID.
+The Echo Swarm web/MCP application does not expose a caller-supplied worker address. Its bridge accepts only a configured loopback origin, defaults to the governed reservation `127.0.0.1:8358`, clamps budget inputs, redacts returned secrets, and polls runs by validated ID. Port `8157` remains owned by the unrelated `echo-reveng-defense.service`, and legacy worker `8357` is not modified by this v0.5 profile.
 
 Independent PR review corrected `src/echo_fusion/arbitration.py` so identical claim prefixes from different subproblems cannot be collapsed as replication and asynchronous completion cannot promote a less-corroborated member as the visible cluster representative. It corrected `src/echo_fusion_worker/app.py` so an idempotent `wait:true` retry waits for an existing run and returns the completed result inline; `src/echo_fusion_worker/live_adapters.py` now parses whitespace-tolerant key assignments; and `src/echo_fusion/schemas.py` caps model-labeled external evidence until trusted verification. `SOURCE_PROVENANCE.json` retains the original FORGE SHAs and records the corrected QUENCH SHAs; the authored `tests/test_review_regressions.py` plus the updated trusted-evidence cascade invariant prove these boundaries.
+
+The later `reconstructed_v05` integration is additive. It does not relabel or replace the recovered `echo_fusion` engine. `src/echo_fusion_worker/portable_core.py` adapts the separately versioned wheel under `../maximalist_reconstructed_core/`; that directory binds the wheel to source SHA `de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f` and SHA-256 `defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5`. The app exposes this adapter only when `FUSION_PROFILE=reconstructed_v05`; its existing `stub` and `live` profiles remain distinct. Version 0.5.3 retains deterministic routing receipts, configurable bounded routing, evidence claim topology, coverage telemetry, explicit provider/model fallback configuration, and restart-safe seat-performance history. It includes the phase-specific ANVIL Trinity JSON Schema added in 0.5.1 after the live 0.5.0 canary proved generic JSON could omit the required candidate answer; the governed brain, doctrine, and engine SDK contracts repaired in 0.5.2; and the measured ANVIL transport/context repair that aligns the adapter timeout with the controller and explicitly requests the installed model's 32,768-token context. Model output and capability evidence remain untrusted and claim-grounded. These mechanisms belong to the reconstruction and do not establish historical parity.
+
+Worker 0.2.5 adds a separate durable idempotency boundary after restart testing
+proved the prior in-memory key map could launch a duplicate run. The worker now
+hashes caller keys, binds them to canonical effective requests, serializes
+same-key starts, atomically commits the mapping before scheduling provider work,
+and refuses corrupt, conflicting, dangling, or incomplete restart state. The
+operator-only seeding command accepts only an existing completed
+`MAXIMALIST_RECONSTRUCTED` checkpoint. This repair does not modify the vendored
+0.5.3 core or claim historical parity.
 
 ## Verification
 
@@ -18,6 +29,8 @@ $env:PYTHONPATH = "$PWD\systems\echo_maximalist_fusion\src"
 .\.venv-brain\Scripts\python.exe systems\echo_maximalist_fusion\tests\test_worker.py
 .\.venv-brain\Scripts\python.exe systems\echo_maximalist_fusion\tests\test_live_adapters.py
 .\.venv-brain\Scripts\python.exe -m pytest systems\echo_maximalist_fusion\tests\test_review_regressions.py -q
+$env:PYTHONPATH = "$PWD\systems\maximalist_reconstructed_core\vendor\maximalist_reconstructed-0.5.3-py3-none-any.whl;$PWD\systems\echo_maximalist_fusion\src"
+.\.venv-brain\Scripts\python.exe -m pytest systems\echo_maximalist_fusion\tests\test_portable_core.py -q
 ```
 
 Do not restart `echo-workers` or the production Fusion unit merely to test this vendored source. Run isolated tests or a separate loopback development instance.

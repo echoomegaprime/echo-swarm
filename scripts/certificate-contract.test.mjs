@@ -108,6 +108,12 @@ test("certificate graphic, private key boundary, OAuth ceremony, and edition gat
   assert.doesNotMatch(commanderKey, /exportKey\("jwk", pair\.privateKey/);
   assert.match(certificateServer, /github\.com\/user/);
   assert.match(certificateServer, /ECHO_COMMANDER_GITHUB_LOGINS/);
+  assert.match(certificateServer, /ECHO_CERTFORGE_TARGET_IDENTITY_DIGEST/);
+  assert.match(
+    certificateServer,
+    /receipt\.payload\.target_identity_digest !== expectedTargetIdentityDigest/,
+  );
+  assert.match(certificateServer, /HEX_64_RE\.test\(expectedTargetIdentityDigest\)/);
   assert.match(certificateServer, /dsaEncoding: "ieee-p1363"/);
   assert.match(edition, /private-oauth/);
   assert.match(edition, /public-api/);
@@ -130,4 +136,3 @@ test("public installer templates are valid JSON and never contain concrete secre
     assert.doesNotMatch(raw, /(?:sk-|xai-|ghp_|github_pat_)[A-Za-z0-9]/);
   }
 });
-

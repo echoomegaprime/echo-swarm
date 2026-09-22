@@ -20,6 +20,7 @@ import {
 import type {
   BuildPhase,
   Insight,
+  InferenceRoute,
   SeatTurn,
   SwarmEvent,
   SwarmTurnInput,
@@ -28,6 +29,9 @@ import type {
   ToolTrace,
 } from "./types";
 import { allowsServerRemoteCredentials, PUBLIC_API_EDITION } from "./edition";
+import { completeCodex, codexSubscriptionStatus, usesCodexSubscription } from "./codex-cli.server";
+import { completeOpenAIResponses } from "./openai-responses.server";
+import { completeSubscription, subscriptionStatus } from "./subscription-cli.server";
 
 const MAX_TOKENS = 700;
 const FETCH_MS = 50_000;
@@ -93,18 +97,38 @@ export function temperEnv() {
   };
 }
 
-export function providerStatus() {
+export async function providerStatus() {
   const env: Partial<Record<KeyField, boolean>> = {};
   for (const id of Object.keys(MODELS) as ModelId[]) {
     const def = MODELS[id];
     if (def.kind === "local" && def.envVars?.some((n) => envOf(n))) {
       env[def.keyField] = true;
     }
+    if (
+      !["gpt", "grok", "claude"].includes(id) &&
+      def.kind !== "local" &&
+      def.envVars?.some((name) => remoteEnvOf(name))
+    )
+      env[def.keyField] = true;
   }
   if (grokIsLive()) env.grok = true;
   if (githubEnvToken()) env.github = true;
+  const [codex, claudeCli, grokCli] = await Promise.all([
+    codexSubscriptionStatus(),
+    subscriptionStatus("claude"),
+    subscriptionStatus("grok"),
+  ]);
+  if (claudeCli.ready) env.anthropic = true;
+  if (grokCli.ready) env.grok = true;
+  if (codex.ready) env.openai = true;
+  const openaiApi = Boolean(remoteEnvOf("OPENAI_API_KEY"));
+  if (openaiApi) env.openai = true;
   return {
-    grok: grokIsLive(),
+    codex,
+    claudeCli,
+    grokCli,
+    openaiApi,
+    grok: usesCodexSubscription() ? grokCli.ready : grokIsLive(),
     github: Boolean(githubEnvToken()),
     forge: Boolean(forgeEnv().url),
     temper: Boolean(temperEnv().url),
@@ -124,7 +148,7 @@ interface Resolved {
   model: string;
   kind: ModelDef["kind"];
   auth: AuthMode;
-  via?: "github";
+  via?: "github" | "codex-cli" | "subscription-cli";
   extraHeaders?: Record<string, string>;
 }
 
@@ -137,6 +161,18 @@ export function resolveSeat(
   const def = MODELS[id];
   if (!def) return undefined;
   const model = chosenModel(id, picks, keys);
+  if (usesCodexSubscription() && (id === "grok" || id === "claude")) {
+    return {
+      id,
+      def,
+      key: "",
+      url: "",
+      model,
+      kind: def.kind,
+      auth: "oauth",
+      via: "subscription-cli",
+    };
+  }
 
   if (id === "qwen") {
     const env = forgeEnv();
@@ -185,11 +221,15 @@ export function resolveSeat(
   }
 
   if (id === "gpt") {
-    if (keys.openai?.trim()) {
+    if (usesCodexSubscription()) {
+      return { id, def, key: "", url: "", model, kind: "openai", auth: "oauth", via: "codex-cli" };
+    }
+    const apiKey = keys.openai?.trim() || remoteEnvOf("OPENAI_API_KEY");
+    if (apiKey) {
       return {
         id,
         def,
-        key: keys.openai.trim(),
+        key: apiKey,
         url: def.url!,
         model: chosenModel(id, picks, keys),
         kind: "openai",
@@ -241,7 +281,7 @@ export function resolveSeat(
   }
 
   if (id === "gemini") {
-    const key = keys.google?.trim();
+    const key = keys.google?.trim() || remoteEnvOf(...(def.envVars ?? []));
     if (!key) return undefined;
     return {
       id,
@@ -254,7 +294,7 @@ export function resolveSeat(
     };
   }
 
-  const key = keys[def.keyField]?.trim();
+  const key = keys[def.keyField]?.trim() || remoteEnvOf(...(def.envVars ?? []));
   if (!key || !def.url) return undefined;
   return {
     id,
@@ -305,6 +345,7 @@ interface ChatMsg {
   content: string;
   name?: string;
   toolCallId?: string;
+  toolCalls?: ToolCall[];
 }
 
 interface ToolCall {
@@ -318,14 +359,18 @@ interface CompleteOk {
   text: string;
   toolCalls: ToolCall[];
   usage?: TokenUsage;
+  model?: string;
+  route?: InferenceRoute;
 }
 
 function parseUsage(body: unknown): TokenUsage | undefined {
   if (!body || typeof body !== "object") return undefined;
-  const u = (body as { usage?: Record<string, unknown>; usageMetadata?: Record<string, unknown> }).usage;
+  const u = (body as { usage?: Record<string, unknown>; usageMetadata?: Record<string, unknown> })
+    .usage;
   const g = (body as { usageMetadata?: Record<string, unknown> }).usageMetadata;
   const prompt = num(u?.prompt_tokens) ?? num(u?.input_tokens) ?? num(g?.promptTokenCount);
-  const completion = num(u?.completion_tokens) ?? num(u?.output_tokens) ?? num(g?.candidatesTokenCount);
+  const completion =
+    num(u?.completion_tokens) ?? num(u?.output_tokens) ?? num(g?.candidatesTokenCount);
   if (prompt == null && completion == null) return undefined;
   return { prompt: prompt ?? 0, completion: completion ?? 0 };
 }
@@ -334,10 +379,7 @@ function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
 
-async function readSse(
-  res: Response,
-  onEvent: (json: unknown) => void,
-): Promise<void> {
+async function readSse(res: Response, onEvent: (json: unknown) => void): Promise<void> {
   if (!res.body) return;
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -713,7 +755,10 @@ async function completeGemini(opts: {
     }[];
   };
   const parts = data.candidates?.[0]?.content?.parts ?? [];
-  const text = parts.map((p) => p.text ?? "").join("\n").trim();
+  const text = parts
+    .map((p) => p.text ?? "")
+    .join("\n")
+    .trim();
   const toolCalls: ToolCall[] = parts
     .filter((p) => p.functionCall?.name)
     .map((p, i) => ({
@@ -779,6 +824,47 @@ async function completeOnce(opts: {
   const seat = resolveSeat(opts.id, opts.keys, opts.auth, opts.picks);
   if (!seat) {
     return { ok: false, error: `${MODELS[opts.id].name} is not connected.` };
+  }
+  if (seat.via === "subscription-cli" && (seat.id === "grok" || seat.id === "claude")) {
+    const result = await completeSubscription({
+      provider: seat.id,
+      model: seat.model,
+      system: opts.system,
+      messages: opts.messages,
+    });
+    if (result.ok) opts.onDelta?.(result.text);
+    return result;
+  }
+  if (seat.via === "codex-cli") {
+    const result = await completeCodex({
+      model: seat.model,
+      system: opts.system,
+      messages: opts.messages,
+    });
+    if (result.ok) {
+      opts.onDelta?.(result.text);
+      return { ...result, toolCalls: [] };
+    }
+    const apiKey = opts.keys.openai?.trim() || remoteEnvOf("OPENAI_API_KEY");
+    // Only an explicit API key enables billing. Never replay OAuth/session tokens or uncertain work.
+    if (!result.fallbackEligible || !apiKey?.startsWith("sk-")) return result;
+    const fallback = await completeOpenAIResponses({
+      ...opts,
+      key: apiKey,
+      model: seat.model,
+      tools: opts.tools ? openaiTools().map((tool) => tool.function) : undefined,
+    });
+    if (!fallback.ok)
+      return { ...fallback, error: `${result.error} API fallback: ${fallback.error}` };
+    return fallback;
+  }
+  if (seat.id === "gpt" && seat.via !== "github") {
+    return completeOpenAIResponses({
+      ...opts,
+      key: seat.key,
+      model: seat.model,
+      tools: opts.tools ? openaiTools().map((tool) => tool.function) : undefined,
+    });
   }
   if (seat.kind === "anthropic") {
     return completeAnthropic({
@@ -981,7 +1067,15 @@ function fromComplete(
   phase?: BuildPhase,
 ): SeatTurn {
   if (!r.ok) return { modelId: id, content: "", traces: [], error: r.error, phase };
-  return { modelId: id, content: r.text.trim(), traces: [], phase, usage: r.usage };
+  return {
+    modelId: id,
+    model: r.model,
+    route: r.route,
+    content: r.text.trim(),
+    traces: [],
+    phase,
+    usage: r.usage,
+  };
 }
 
 async function speak(
@@ -999,7 +1093,12 @@ async function speak(
   turn.phase = turn.phase ?? phase;
   fire(ctx, { type: "turn", turn });
   if (turn.usage) {
-    fire(ctx, { type: "usage", modelId: id, prompt: turn.usage.prompt, completion: turn.usage.completion });
+    fire(ctx, {
+      type: "usage",
+      modelId: id,
+      prompt: turn.usage.prompt,
+      completion: turn.usage.completion,
+    });
   }
   return turn;
 }
@@ -1034,7 +1133,13 @@ async function execPlugin(
       });
       if (!r.ok) return r.error;
       const text = r.text.trim() || "(empty)";
-      ctx.peerTurns.push({ modelId: model, content: text, traces: [] });
+      ctx.peerTurns.push({
+        modelId: model,
+        model: r.model,
+        route: r.route,
+        content: text,
+        traces: [],
+      });
       return text.slice(0, 4000);
     }
     case "pin_insight": {
@@ -1051,9 +1156,7 @@ async function execPlugin(
     }
     case "recall_insights": {
       if (!ctx.insights.length) return "No pins yet.";
-      return ctx.insights
-        .map((i) => `- ${i.title} (${MODELS[i.from].name}): ${i.body}`)
-        .join("\n");
+      return ctx.insights.map((i) => `- ${i.title} (${MODELS[i.from].name}): ${i.body}`).join("\n");
     }
     case "make_image": {
       const prompt = String(args.prompt ?? args.body ?? "").trim();
@@ -1087,6 +1190,8 @@ async function completeWithTools(
   let text = "";
   const traces: ToolTrace[] = [];
   let lastUsage: TokenUsage | undefined;
+  let route: CompleteOk["route"];
+  let model: string | undefined;
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const r = await completeOnce({
       id,
@@ -1100,10 +1205,13 @@ async function completeWithTools(
     if (!r.ok) return { modelId: id, content: "", traces, error: r.error };
     text = r.text.trim();
     lastUsage = r.usage;
+    route = r.route;
+    model = r.model;
     if (!r.toolCalls.length) break;
     local.push({
       role: "assistant",
       content: text || r.toolCalls.map((t) => t.name).join(", "),
+      toolCalls: r.toolCalls,
     });
     for (const call of r.toolCalls) {
       const result = await execPlugin(call.name, call.args, ctx);
@@ -1121,7 +1229,7 @@ async function completeWithTools(
       });
     }
   }
-  return { modelId: id, content: text, traces, usage: lastUsage };
+  return { modelId: id, model, route, content: text, traces, usage: lastUsage };
 }
 
 function insightBlock(insights: Insight[]): string {
@@ -1159,10 +1267,7 @@ function seatSystem(
     .join("\n");
 }
 
-function historyToChat(
-  history: SwarmTurnInput["history"],
-  forId?: ModelId,
-): ChatMsg[] {
+function historyToChat(history: SwarmTurnInput["history"], forId?: ModelId): ChatMsg[] {
   return history.slice(-16).map((h) => {
     if (h.role === "user") return { role: "user" as const, content: h.content };
     const tag = h.modelId && h.modelId !== forId ? `[${MODELS[h.modelId].name}] ` : "";
@@ -1190,7 +1295,10 @@ function textSeats(connected: ModelId[]): ModelId[] {
 
 function pickRoles(connected: ModelId[], pref: ModelId[], cap: number): ModelId[] {
   const pool = textSeats(connected);
-  const ordered = [...pref.filter((id) => pool.includes(id)), ...pool.filter((id) => !pref.includes(id))];
+  const ordered = [
+    ...pref.filter((id) => pool.includes(id)),
+    ...pool.filter((id) => !pref.includes(id)),
+  ];
   const uniq: ModelId[] = [];
   for (const id of ordered) {
     if (!uniq.includes(id)) uniq.push(id);
@@ -1217,23 +1325,25 @@ async function askBuild(
   phase: BuildPhase,
   maxTokens: number,
 ): Promise<SeatTurn> {
-  return speak(ctx, id, async (onDelta) => {
-    const r = await completeOnce({
-      id,
-      keys: input.keys,
-      auth: ctx.auth,
-      picks: ctx.picks,
-      system,
-      messages: [
-        ...historyToChat(input.history, id),
-        { role: "user", content: user },
-      ],
-      tools: false,
-      maxTokens,
-      onDelta,
-    });
-    return fromComplete(id, r, phase);
-  }, phase);
+  return speak(
+    ctx,
+    id,
+    async (onDelta) => {
+      const r = await completeOnce({
+        id,
+        keys: input.keys,
+        auth: ctx.auth,
+        picks: ctx.picks,
+        system,
+        messages: [...historyToChat(input.history, id), { role: "user", content: user }],
+        tools: false,
+        maxTokens,
+        onDelta,
+      });
+      return fromComplete(id, r, phase);
+    },
+    phase,
+  );
 }
 
 async function runBuildHeavy(
@@ -1249,7 +1359,10 @@ async function runBuildHeavy(
   const turns: SeatTurn[] = [];
 
   fire(ctx, { type: "phase", phase: "spec", seats: architects });
-  fire(ctx, { type: "notice", content: `SPEC — ${architects.map((id) => MODELS[id].name).join(", ")}` });
+  fire(ctx, {
+    type: "notice",
+    content: `SPEC — ${architects.map((id) => MODELS[id].name).join(", ")}`,
+  });
   const specUser = [
     "BUILD HEAVY — SPEC phase. You are one architect on a multi-lab engineering swarm, not a chatbot.",
     "Same job as Grok Build: turn the brief into a concrete build spec.",
@@ -1273,7 +1386,10 @@ async function runBuildHeavy(
   const specDigest = digestTurns(specTurns);
 
   fire(ctx, { type: "phase", phase: "implement", seats: implementers });
-  fire(ctx, { type: "notice", content: `IMPLEMENT — ${implementers.map((id) => MODELS[id].name).join(", ")}` });
+  fire(ctx, {
+    type: "notice",
+    content: `IMPLEMENT — ${implementers.map((id) => MODELS[id].name).join(", ")}`,
+  });
 
   const implUser = [
     "BUILD HEAVY — IMPLEMENT phase. You are an implementer on the swarm.",
@@ -1299,7 +1415,10 @@ async function runBuildHeavy(
   const implDigest = digestTurns(implTurns, 5000);
 
   fire(ctx, { type: "phase", phase: "review", seats: reviewers });
-  fire(ctx, { type: "notice", content: `REVIEW — ${reviewers.map((id) => MODELS[id].name).join(", ")}` });
+  fire(ctx, {
+    type: "notice",
+    content: `REVIEW — ${reviewers.map((id) => MODELS[id].name).join(", ")}`,
+  });
 
   const reviewUser = [
     "BUILD HEAVY — REVIEW phase. Hostile review. Same bar as Grok Build verify.",
@@ -1338,18 +1457,23 @@ async function runBuildHeavy(
   fire(ctx, { type: "phase", phase: "merge", seats: [host] });
   fire(ctx, { type: "notice", content: `MERGE — ${MODELS[host].name}` });
   ctx.peerCalls = 0;
-  const merge = await speak(ctx, host, async () => {
-    const t = await completeWithTools(
-      host,
-      input.keys,
-      ctx.auth,
-      `${seatSystem(host, host, connected, ctx.insights, true, ctx.picks)}\nRole: lead engineer. Merge and ship.`,
-      [...historyToChat(input.history, host), { role: "user", content: mergeUser }],
-      ctx,
-    );
-    t.phase = "merge";
-    return t;
-  }, "merge");
+  const merge = await speak(
+    ctx,
+    host,
+    async () => {
+      const t = await completeWithTools(
+        host,
+        input.keys,
+        ctx.auth,
+        `${seatSystem(host, host, connected, ctx.insights, true, ctx.picks)}\nRole: lead engineer. Merge and ship.`,
+        [...historyToChat(input.history, host), { role: "user", content: mergeUser }],
+        ctx,
+      );
+      t.phase = "merge";
+      return t;
+    },
+    "merge",
+  );
   turns.push(merge, ...ctx.peerTurns.map((t) => ({ ...t, phase: "merge" as const })));
   return turns;
 }
@@ -1416,10 +1540,7 @@ export async function runSwarm(
               auth: ctx.auth,
               picks: ctx.picks,
               system: seatSystem(id, host, connected, insights, false, ctx.picks),
-              messages: [
-                ...historyToChat(input.history, id),
-                { role: "user", content: prompt },
-              ],
+              messages: [...historyToChat(input.history, id), { role: "user", content: prompt }],
               tools: false,
               onDelta,
             });
@@ -1571,7 +1692,7 @@ export async function runSwarm(
   }
 
   for (const t of turns) {
-    t.model = resolveSeat(t.modelId, input.keys, ctx.auth, ctx.picks)?.model;
+    t.model ??= resolveSeat(t.modelId, input.keys, ctx.auth, ctx.picks)?.model;
   }
 
   const result: SwarmTurnResult = { ok: true, turns, insights, skipped };
@@ -1580,7 +1701,7 @@ export async function runSwarm(
 }
 
 export async function pingNodes(keys: ProviderKeys) {
-  const status = providerStatus();
+  const status = await providerStatus();
   const forgeUrl = keys.forgeUrl?.trim() || forgeEnv().url || FORGE_DEFAULT_URL;
   const temperUrl = keys.temperUrl?.trim() || temperEnv().url;
   const [forgeMs, temperMs] = await Promise.all([

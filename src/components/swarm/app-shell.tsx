@@ -3,7 +3,7 @@ import { Award, Cable, Download, Menu, Plug, Plus, X } from "lucide-react";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getProviderStatus, pingFleet } from "@/lib/swarm/actions";
+import { getProviderStatus, getPublicModelCatalog, pingFleet } from "@/lib/swarm/actions";
 import { useSwarm } from "@/lib/swarm/store";
 import { ConnectDialog } from "./connect-dialog";
 import { PluginDialog } from "./plugin-dialog";
@@ -28,6 +28,11 @@ export function SwarmApp() {
   );
 
   useEffect(() => {
+    void getPublicModelCatalog()
+      .then((catalog) => {
+        useSwarm.getState().setModelVariants("openrouter", catalog.variants);
+      })
+      .catch(() => undefined);
     void Promise.resolve(useSwarm.persist.rehydrate()).then(() => {
       useSwarm.getState().setHydrated(true);
     });
@@ -108,9 +113,7 @@ export function SwarmApp() {
               >
                 <Menu className="size-4" />
               </Button>
-              <span className="hidden font-serif text-lg tracking-tight md:inline">
-                {title}
-              </span>
+              <span className="hidden font-serif text-lg tracking-tight md:inline">{title}</span>
               <span className="font-serif text-lg tracking-tight md:hidden">Swarm</span>
             </div>
             <div className="flex items-center gap-1">
@@ -135,23 +138,56 @@ export function SwarmApp() {
               >
                 <Download className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Plugin" onClick={() => setPluginOpen(true)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label="Plugin"
+                onClick={() => setPluginOpen(true)}
+              >
                 <Cable className="size-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => setPluginOpen(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden md:inline-flex"
+                onClick={() => setPluginOpen(true)}
+              >
                 <Cable className="size-4" />
                 Plugin
               </Button>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Certificate" asChild>
-                <a href="/certificate"><Award className="size-4" /></a>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label="Certificate"
+                asChild
+              >
+                <a href="/certificate">
+                  <Award className="size-4" />
+                </a>
               </Button>
               <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
-                <a href="/certificate"><Award className="size-4" />Certificate</a>
+                <a href="/certificate">
+                  <Award className="size-4" />
+                  Certificate
+                </a>
               </Button>
-              <Button variant="outline" size="icon" className="md:hidden" aria-label="Connect" onClick={() => setConnectOpen(true)}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="md:hidden"
+                aria-label="Connect"
+                onClick={() => setConnectOpen(true)}
+              >
                 <Plug className="size-4" />
               </Button>
-              <Button variant="outline" size="sm" className="hidden md:inline-flex" onClick={() => setConnectOpen(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:inline-flex"
+                onClick={() => setConnectOpen(true)}
+              >
                 <Plug className="size-4" />
                 Connect
               </Button>

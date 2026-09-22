@@ -86,7 +86,7 @@ export function Composer() {
       data: {
         objective,
         context,
-        budget: { max_calls: 120, max_cost_usd: 5, max_wall_s: 420 },
+        budget: { max_calls: 120, max_cost_usd: 5, max_wall_s: 4800 },
         idempotency_key: `chat:${runId}`,
       },
     });
@@ -94,7 +94,7 @@ export function Composer() {
       throw new Error(started.error || "Echo Fusion Worker did not return a run ID.");
     }
     let polled = started;
-    const deadline = Date.now() + 600_000;
+    const deadline = Date.now() + 4_860_000;
     while (!polled.done && Date.now() < deadline) {
       if (signal.aborted) return;
       await new Promise<void>((resolve) => window.setTimeout(resolve, 1_250));
@@ -102,7 +102,7 @@ export function Composer() {
       polled = await getFusionResult({ data: { run_id: started.run_id } });
       if (!polled.ok) throw new Error(polled.error || "Echo Fusion Worker polling failed.");
     }
-    if (!polled.done) throw new Error("Echo Fusion Worker exceeded the 10-minute chat limit.");
+    if (!polled.done) throw new Error("Echo Fusion Worker exceeded the 81-minute full-40 limit.");
     store.pushMessages([
       {
         id: crypto.randomUUID(),
@@ -210,6 +210,7 @@ export function Composer() {
             source: "council",
             modelId: event.turn.modelId,
             model: event.turn.model,
+            route: event.turn.route,
             content: event.turn.error ? event.turn.error : event.turn.content,
             traces: event.turn.traces,
             phase: event.turn.phase,
@@ -252,6 +253,7 @@ export function Composer() {
               source: "council",
               modelId: turn.modelId,
               model: turn.model,
+              route: turn.route,
               content: turn.error ? turn.error : turn.content,
               traces: turn.traces,
               phase: turn.phase,
