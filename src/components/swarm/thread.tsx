@@ -111,6 +111,15 @@ function MessageCard({ message }: { message: SwarmMessage }) {
           </p>
           <p className="text-xs text-subtle">
             {sublabel}
+            {message.route === "codex-cli-subscription"
+              ? " · Codex subscription"
+              : message.route === "openai-api"
+                ? " · GPT API"
+                : message.route === "grok-build-subscription"
+                  ? " · Grok CLI"
+                  : message.route === "claude-code-subscription"
+                    ? " · Claude Code"
+                    : ""}
             {message.usage ? ` · ${message.usage.prompt + message.usage.completion} tok` : ""}
           </p>
         </div>

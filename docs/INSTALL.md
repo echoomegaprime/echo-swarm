@@ -173,7 +173,7 @@ Echo Swarm prefers already-authorized user subscriptions where the provider expo
 
 | Seat                    | Preferred authentication                                                              | Fallback                                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| GPT / Codex             | Codex or ChatGPT OAuth from the local Codex login                                     | OpenAI API key                                                                               |
+| GPT / Codex             | Official signed-in Codex CLI subprocess using ChatGPT                                 | Explicit OpenAI API key after a known rejection; no fallback on uncertain outcomes           |
 | Claude                  | Claude Code OAuth/setup token                                                         | Anthropic API key                                                                            |
 | Grok                    | xAI OAuth token when available                                                        | xAI API key                                                                                  |
 | DeepSeek                | DeepSeek OAuth token when available                                                   | DeepSeek API key                                                                             |

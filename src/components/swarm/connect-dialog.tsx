@@ -30,11 +30,7 @@ import {
 import { pollGhDevice, pullCliTokens, startGhDevice } from "@/lib/swarm/actions";
 import { isConnected, maskKey, useSwarm, type FleetLive } from "@/lib/swarm/store";
 import { ModelPick } from "./model-pick";
-import {
-  EDITION_LABEL,
-  PRIVATE_OAUTH_EDITION,
-  PUBLIC_API_EDITION,
-} from "@/lib/swarm/edition";
+import { EDITION_LABEL, PRIVATE_OAUTH_EDITION, PUBLIC_API_EDITION } from "@/lib/swarm/edition";
 
 export function ConnectDialog() {
   const open = useSwarm((s) => s.connectOpen);
@@ -55,7 +51,7 @@ export function ConnectDialog() {
           </DialogTitle>
           <DialogDescription className="text-sm text-muted">
             {PRIVATE_OAUTH_EDITION
-              ? "Private OAuth edition. Pull approved signed-in CLI sessions; caller API-key entry is disabled. FORGE and TEMPER remain private local metal."
+              ? "GPT uses the signed-in Codex CLI first. Add a provider API key where needed; keys stay in this browser session. A configured connection is checked when you send a request."
               : "Public API-key edition. Bring your own provider keys; this build cannot read CLI sessions or private server credentials."}
           </DialogDescription>
         </DialogHeader>
@@ -98,22 +94,13 @@ function GroupSection({
   onClear: (field: keyof ProviderKeys) => void;
   onAuth: (field: OAuthField, mode: AuthMode) => void;
 }) {
-  const ids = idsIn(group).filter(
-    (id) => group === "fleet" || PUBLIC_API_EDITION || MODELS[id].oauth,
-  );
+  const ids = idsIn(group);
   if (!ids.length) return null;
   return (
     <Section title={label}>
       {ids.map((id) =>
         group === "fleet" ? (
-          <FleetConnect
-            key={id}
-            id={id}
-            keys={keys}
-            live={live}
-            onSet={onSet}
-            onClear={onClear}
-          />
+          <FleetConnect key={id} id={id} keys={keys} live={live} onSet={onSet} onClear={onClear} />
         ) : (
           <SeatConnect
             key={id}
@@ -121,9 +108,7 @@ function GroupSection({
             keys={keys}
             live={live}
             authMode={
-              MODELS[id].oauth
-                ? (auth[MODELS[id].keyField as OAuthField] ?? "oauth")
-                : undefined
+              MODELS[id].oauth ? (auth[MODELS[id].keyField as OAuthField] ?? "oauth") : undefined
             }
             onSet={onSet}
             onClear={onClear}
@@ -138,9 +123,7 @@ function GroupSection({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="mb-4">
-      <p className="mb-2 text-xs font-medium tracking-[0.16em] text-subtle uppercase">
-        {title}
-      </p>
+      <p className="mb-2 text-xs font-medium tracking-[0.16em] text-subtle uppercase">{title}</p>
       <ul className="flex flex-col gap-3">{children}</ul>
     </div>
   );
@@ -169,8 +152,7 @@ function SeatConnect({
   const connected = isConnected(id, keys, live);
   const stored = keys[field];
   const envHint =
-    (id === "grok" && live.grok && !stored) ||
-    (id === "github" && live.github && !stored);
+    (id === "grok" && live.grok && !stored) || (id === "github" && live.github && !stored);
 
   useEffect(() => {
     if (PUBLIC_API_EDITION && def.oauth && onAuth && authMode !== "key") {
@@ -190,14 +172,20 @@ function SeatConnect({
             <p className="text-xs text-subtle">{def.lab}</p>
           </div>
         </div>
-        <Badge variant={connected ? "ok" : "outline"}>{connected ? "Live" : "Dark"}</Badge>
+        <Badge variant={connected ? "ok" : "outline"}>
+          {connected ? "Configured" : "Needs connection"}
+        </Badge>
       </div>
-      {PUBLIC_API_EDITION && def.oauth ? (
-        <Badge variant="outline">API key only</Badge>
-      ) : null}
+      {PUBLIC_API_EDITION && def.oauth ? <Badge variant="outline">API key only</Badge> : null}
       <p className="mb-2 text-xs text-muted">
         {PRIVATE_OAUTH_EDITION
-          ? `${def.oauthLabel ?? "OAuth"} is the only accepted remote credential mode in this private build.`
+          ? id === "gpt"
+            ? "Uses Codex first, then your GPT API key if the CLI account is unavailable or out of usage. API fallback uses paid API credits."
+            : id === "grok" || id === "claude"
+              ? "Uses the signed-in official CLI on the Brain host."
+              : def.oauth
+                ? `${def.oauthLabel ?? "OAuth"} connection.`
+                : docs.hint
           : docs.hint}
       </p>
       <div className="mb-2">
@@ -208,21 +196,69 @@ function SeatConnect({
           {id === "grok" ? "Using the app xAI connection." : "Using the app GitHub token."}
         </p>
       ) : null}
-      {PUBLIC_API_EDITION ? (
+      {PUBLIC_API_EDITION || !def.oauth || id === "gpt" ? (
         <TokenRow
-          label={`${def.name} API key`}
+          label={
+            PRIVATE_OAUTH_EDITION && id === "gpt" ? "GPT API fallback key" : `${def.name} API key`
+          }
           placeholder={stored ? maskKey(stored) : docs.placeholder}
           href={docs.href}
           linkLabel={docs.label}
           stored={Boolean(stored)}
-          onSet={(v) => onSet(field, v)}
+          onSet={(v) => {
+            onSet(field, v);
+            if (def.oauth) onAuth?.(field as OAuthField, "key");
+          }}
           onClear={() => onClear(field)}
         />
-      ) : (
+      ) : null}
+      {PRIVATE_OAUTH_EDITION ? (
         <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-muted">
-          {stored ? "OAuth/session credential loaded for this browser session." : "Use Pull CLIs above to load an approved OAuth/session credential."}
+          {id === "gpt" ? (
+            <>
+              {live.codex?.ready
+                ? "Codex is signed into ChatGPT. Model access and remaining usage are checked when you send a request."
+                : "Sign into Codex with ChatGPT on the Brain host."}{" "}
+              <a
+                className="underline"
+                href="https://chatgpt.com/codex/settings/usage"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Codex usage
+              </a>
+              {" · "}
+              <a
+                className="underline"
+                href="https://platform.openai.com/settings/organization/billing/overview"
+                target="_blank"
+                rel="noreferrer"
+              >
+                API billing
+              </a>
+            </>
+          ) : id === "grok" || id === "claude" ? (
+            (id === "grok" ? live.grokCli?.ready : live.claudeCli?.ready) ? (
+              "The official CLI is signed in. Model access and usage are checked on each request."
+            ) : (
+              `Connect the official ${def.name} CLI on the Brain host. A session on another computer needs a connection to this service.`
+            )
+          ) : def.oauth ? (
+            stored ? (
+              "OAuth/session credential loaded for this browser session."
+            ) : (
+              "Use Pull CLIs above to load an approved OAuth/session credential."
+            )
+          ) : (
+            <>
+              {connected ? "API connection configured." : "Add this provider's API key above."}{" "}
+              <a className="underline" href={docs.href} target="_blank" rel="noreferrer">
+                {docs.label} account
+              </a>
+            </>
+          )}
         </div>
-      )}
+      ) : null}
     </li>
   );
 }
@@ -374,9 +410,11 @@ function TokenRow({
 
 function CliBar() {
   const [busy, setBusy] = useState(false);
-  const [device, setDevice] = useState<{ user_code: string; verification_uri: string; device_code: string } | null>(
-    null,
-  );
+  const [device, setDevice] = useState<{
+    user_code: string;
+    verification_uri: string;
+    device_code: string;
+  } | null>(null);
 
   async function pull() {
     setBusy(true);
@@ -384,10 +422,9 @@ function CliBar() {
       const got = await pullCliTokens();
       const store = useSwarm.getState();
       if (got.github) store.setKey("github", got.github);
-      if (got.openai) store.setKey("openai", got.openai);
-      if (got.anthropic) store.setKey("anthropic", got.anthropic);
-      if (got.grok) store.setKey("grok", got.grok);
-      toast(got.sources.length ? `Pulled ${got.sources.join(", ")}` : "No CLI tokens on this machine.");
+      toast(
+        got.sources.length ? `Pulled ${got.sources.join(", ")}` : "No CLI tokens on this machine.",
+      );
     } catch (err) {
       toast(err instanceof Error ? err.message : "CLI pull failed.");
     } finally {
@@ -433,16 +470,30 @@ function CliBar() {
 
   return (
     <div className="mb-4 rounded-lg bg-raised p-3 shadow-[var(--shadow-border)]">
-      <p className="mb-2 text-xs font-medium tracking-wide text-subtle uppercase">OAuth capture</p>
+      <p className="mb-2 text-xs font-medium tracking-wide text-subtle uppercase">
+        Private connections
+      </p>
       <p className="mb-2 text-xs text-muted">
-        Pulls `gh auth token`, Claude Code, Codex, and an xAI OAuth token. GitHub
-        device uses the public gh CLI client if no GITHUB_CLIENT_ID is set.
+        GPT, Claude, and Grok use their official CLI sessions directly. The buttons below connect
+        GitHub for this browser session.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void pull()}>
-          Pull CLIs
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => void pull()}
+        >
+          Connect GitHub CLI
         </Button>
-        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void startDevice()}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => void startDevice()}
+        >
           GitHub device
         </Button>
         <Button
@@ -457,7 +508,12 @@ function CliBar() {
       {device ? (
         <p className="mt-2 text-sm text-muted">
           Open{" "}
-          <a className="text-accent underline" href={device.verification_uri} target="_blank" rel="noreferrer">
+          <a
+            className="text-accent underline"
+            href={device.verification_uri}
+            target="_blank"
+            rel="noreferrer"
+          >
             {device.verification_uri}
           </a>{" "}
           and enter <span className="font-mono text-fg">{device.user_code}</span>

@@ -16,6 +16,8 @@ export interface ToolTrace {
 export type BuildPhase = "spec" | "implement" | "review" | "merge" | "fusion" | "brain";
 
 export type SwarmMessageSource = "council" | "fusion" | "brain";
+export type InferenceRoute =
+  "codex-cli-subscription" | "openai-api" | "claude-code-subscription" | "grok-build-subscription";
 
 export interface TokenUsage {
   prompt: number;
@@ -34,6 +36,7 @@ export interface SwarmMessage {
   role: "user" | "assistant" | "notice";
   modelId?: ModelId;
   model?: string;
+  route?: InferenceRoute;
   source?: SwarmMessageSource;
   runId?: string;
   content: string;
@@ -74,6 +77,7 @@ export interface SwarmTurnInput {
 export interface SeatTurn {
   modelId: ModelId;
   model?: string;
+  route?: InferenceRoute;
   content: string;
   traces: ToolTrace[];
   error?: string;

@@ -11,8 +11,11 @@ behind a reverse proxy; generated manifests and certificate links never infer a
 public scheme from proxy transport when this value is present.
 
 - This is the authoritative ECHO deployment.
-- Remote model credentials come from approved OAuth or signed-in CLI sessions.
-- The UI does not render caller API-key inputs for remote seats.
+- GPT invokes the official signed-in Codex CLI first. Its ChatGPT authentication stays inside that client.
+- Grok and Claude invoke their signed-in official CLIs, with bounded requests and no host tools. Their subscription credentials stay inside those clients.
+- Managed provider keys, including `TOGETHER_API_KEY`, resolve from approved service environment configuration. This does not grant the app permission to enumerate or export vault secrets.
+- A caller-entered OpenAI API key or managed `OPENAI_API_KEY` enables paid GPT fallback after a known CLI authentication, model-access, or quota rejection. A timeout, partial answer, or uncertain failure does not trigger fallback.
+- The UI accepts API keys for GPT fallback and API providers. Private browser keys are session-only and are excluded from persisted state. OAuth/session tokens are never accepted as GPT API fallback keys.
 - MCP request bodies and headers cannot inject provider secrets, local-node URLs, model ids, or routing hints; the authoritative service resolves them from its approved runtime.
 - GitHub OAuth device authorization is available for the Commander certificate-signature ceremony.
 - Local FORGE and TEMPER seats remain private server-controlled resources.
@@ -33,4 +36,4 @@ Build it with `npm run build:public`. Templates are under `public/install/public
 
 ## Secret boundary
 
-Neither edition commits credentials. The private edition must resolve OAuth/session material from approved runtime stores. The public edition keeps caller keys in the browser/client and sends them only to the chosen deployment for the requested call. Certificate JSON and graphics never contain model credentials.
+Neither edition commits credentials. The private edition leaves Codex authentication inside the official client and resolves other approved connections from their supported runtime stores. Caller keys travel only to the chosen deployment for the requested provider call. Certificate JSON and graphics never contain model credentials.

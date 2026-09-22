@@ -4,7 +4,8 @@ import { useSwarm } from "@/lib/swarm/store";
 import { cn } from "@/lib/utils";
 
 export function ModelPick({ id, className }: { id: ModelId; className?: string }) {
-  const variants = VARIANTS[id] ?? [];
+  const discovered = useSwarm((s) => s.modelVariants[id]);
+  const variants = discovered?.length ? discovered : (VARIANTS[id] ?? []);
   const stored = useSwarm((s) => s.picks[id]);
   const setPick = useSwarm((s) => s.setPick);
   const fallback = MODELS[id].model;

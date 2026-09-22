@@ -12,6 +12,7 @@ import {
 } from "./oauth.server";
 import { handleMaximalistTool } from "./mcp-maximalist.server";
 import { authModesForEdition } from "./edition";
+import { publicModelCatalog } from "./model-catalog.server";
 
 const modelId = z.enum(MODEL_IDS);
 
@@ -110,6 +111,8 @@ const turnInput = z.object({
 export const getProviderStatus = createServerFn({ method: "GET" }).handler(async () =>
   providerStatus(),
 );
+
+export const getPublicModelCatalog = createServerFn({ method: "GET" }).handler(publicModelCatalog);
 
 export const sendSwarmTurn = createServerFn({ method: "POST" })
   .validator(turnInput)

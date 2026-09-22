@@ -8,16 +8,22 @@ import {
   type AuthModes,
   type KeyField,
   type ModelId,
+  type ModelVariant,
   type OAuthField,
   type Picks,
   type ProviderKeys,
   type SwarmMode,
 } from "./catalog";
-import type { Insight, QuoteTarget, SeatSpend, StreamSeat, SwarmMessage, SwarmSession, TokenUsage } from "./types";
-import {
-  PRIVATE_OAUTH_EDITION,
-  REMOTE_PROVIDER_SECRET_FIELDS,
-} from "./edition";
+import type {
+  Insight,
+  QuoteTarget,
+  SeatSpend,
+  StreamSeat,
+  SwarmMessage,
+  SwarmSession,
+  TokenUsage,
+} from "./types";
+import { PRIVATE_OAUTH_EDITION, REMOTE_PROVIDER_SECRET_FIELDS } from "./edition";
 
 function persistableKeys(keys: ProviderKeys): ProviderKeys {
   if (!PRIVATE_OAUTH_EDITION) return keys;
@@ -36,6 +42,10 @@ const emptySession = (): SwarmSession => ({
 });
 
 export interface FleetLive {
+  codex?: { ready: boolean; route: string };
+  openaiApi?: boolean;
+  claudeCli?: { ready: boolean };
+  grokCli?: { ready: boolean };
   grok: boolean;
   github: boolean;
   forge: boolean;
@@ -49,6 +59,8 @@ interface SwarmState {
   keys: ProviderKeys;
   auth: AuthModes;
   picks: Picks;
+  modelVariants: Partial<Record<ModelId, ModelVariant[]>>;
+  setModelVariants: (id: ModelId, variants: ModelVariant[]) => void;
   live: FleetLive;
   host: ModelId;
   seats: ModelId[];
@@ -106,6 +118,9 @@ export const useSwarm = create<SwarmState>()(
         keys: {},
         auth: { ...DEFAULT_AUTH },
         picks: {},
+        modelVariants: {},
+        setModelVariants: (id, variants) =>
+          set((s) => ({ modelVariants: { ...s.modelVariants, [id]: variants } })),
         live: { grok: false, github: false, forge: false, temper: false, env: {} },
         host: "grok",
         seats: [...DEFAULT_SEATS],
@@ -123,8 +138,7 @@ export const useSwarm = create<SwarmState>()(
         hydrated: false,
         setHydrated: (v) => set({ hydrated: v }),
         setLive: (live) => set({ live }),
-        setKey: (field, value) =>
-          set((s) => ({ keys: { ...s.keys, [field]: value.trim() } })),
+        setKey: (field, value) => set((s) => ({ keys: { ...s.keys, [field]: value.trim() } })),
         clearKey: (field) =>
           set((s) => {
             const next = { ...s.keys };
@@ -258,9 +272,8 @@ export const useSwarm = create<SwarmState>()(
         spend: s.spend,
       }),
       merge: (persisted, current) => {
-        const saved = persisted && typeof persisted === "object"
-          ? (persisted as Partial<SwarmState>)
-          : {};
+        const saved =
+          persisted && typeof persisted === "object" ? (persisted as Partial<SwarmState>) : {};
         return {
           ...current,
           ...saved,
@@ -273,12 +286,18 @@ export const useSwarm = create<SwarmState>()(
 
 export function isConnected(id: ModelId, keys: ProviderKeys, live: FleetLive): boolean {
   const def = MODELS[id];
-  if (id === "grok") return Boolean(keys.grok?.trim()) || live.grok;
+  if (id === "grok")
+    return PRIVATE_OAUTH_EDITION
+      ? Boolean(live.grokCli?.ready)
+      : Boolean(keys.grok?.trim()) || live.grok;
   if (id === "github") return Boolean(keys.github?.trim()) || live.github;
   if (id === "gpt") {
+    if (PRIVATE_OAUTH_EDITION)
+      return Boolean(live.env.openai || keys.openai?.trim().startsWith("sk-"));
     return Boolean(keys.openai?.trim()) || Boolean(keys.github?.trim()) || live.github;
   }
   if (id === "claude") {
+    if (PRIVATE_OAUTH_EDITION) return Boolean(live.claudeCli?.ready);
     return Boolean(keys.anthropic?.trim()) || Boolean(keys.github?.trim()) || live.github;
   }
   if (id === "qwen") {
