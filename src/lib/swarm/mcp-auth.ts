@@ -1,5 +1,7 @@
 /** Surface identity + optional bearer gate for Swarm MCP / plugin HTTP. */
 
+import { validateToken as isValidOAuthToken } from "./oauth-store";
+
 export const APPROVED_AGENTS = new Set([
   "grok",
   "chatgpt",
@@ -47,6 +49,10 @@ export function expectedSwarmToken(): string | undefined {
  */
 export function authorizePluginRequest(request: Request): McpAuthResult {
   const agent = agentFromHeaders(request.headers);
+  const oauthBearer = bearerFromHeaders(request.headers);
+  if (oauthBearer && isValidOAuthToken(oauthBearer)) {
+    return { ok: true, agent: agent || "grok" };
+  }
   if (!agent) {
     return {
       ok: false,
