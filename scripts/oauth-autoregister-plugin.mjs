@@ -7,6 +7,8 @@
  * mirroring scripts/app-env-plugin.mjs + the vite.config authPopupPlugin. The
  * token store is loaded via ssrLoadModule so it shares the app's module realm.
  */
+import nodeCrypto from "node:crypto";
+
 export function oauthAutoRegisterPlugin() {
   return {
     name: "swarm:oauth-autoregister",
@@ -60,7 +62,11 @@ export function oauthAutoRegisterPlugin() {
           const origin = originOf(req);
           const store = await server.ssrLoadModule("/src/lib/swarm/oauth-store.ts");
 
-          if (method === "GET" && pathOnly === "/.well-known/oauth-protected-resource") {
+          if (
+            method === "GET" &&
+            (pathOnly === "/.well-known/oauth-protected-resource" ||
+              pathOnly.startsWith("/.well-known/oauth-protected-resource/"))
+          ) {
             sendJson(res, 200, {
               resource: origin + "/api/plugin/mcp",
               authorization_servers: [origin],
@@ -71,7 +77,9 @@ export function oauthAutoRegisterPlugin() {
           if (
             method === "GET" &&
             (pathOnly === "/.well-known/oauth-authorization-server" ||
-              pathOnly === "/.well-known/openid-configuration")
+              pathOnly.startsWith("/.well-known/oauth-authorization-server/") ||
+              pathOnly === "/.well-known/openid-configuration" ||
+              pathOnly.startsWith("/.well-known/openid-configuration/"))
           ) {
             sendJson(res, 200, {
               issuer: origin,
@@ -107,8 +115,15 @@ export function oauthAutoRegisterPlugin() {
             }
             return;
           }
-          if (method === "GET" && pathOnly === "/oauth/authorize") {
-            const q = new URL(rawUrl, origin).searchParams;
+          if ((method === "GET" || method === "POST") && pathOnly === "/oauth/authorize") {
+            // Owner consent gate: a code is only issued after the operator proves
+            // possession of SWARM_MCP_TOKEN. Fails closed when it is unset.
+            let q = new URL(rawUrl, origin).searchParams;
+            let ownerKey = "";
+            if (method === "POST") {
+              q = new URLSearchParams(await readBody(req));
+              ownerKey = (q.get("owner_key") || "").trim();
+            }
             const client_id = q.get("client_id");
             const redirect_uri = q.get("redirect_uri");
             const challenge = q.get("code_challenge");
@@ -125,12 +140,41 @@ export function oauthAutoRegisterPlugin() {
               sendJson(res, 400, { error: "invalid_request" });
               return;
             }
+            const expected = String(process.env.SWARM_MCP_TOKEN || "").trim();
+            if (expected.length < 16) {
+              sendJson(res, 503, { error: "owner_consent_unconfigured" });
+              return;
+            }
+            const a = Buffer.from(ownerKey, "utf8");
+            const b = Buffer.from(expected, "utf8");
+            const consented =
+              method === "POST" && a.length === b.length && nodeCrypto.timingSafeEqual(a, b);
+            if (!consented) {
+              const esc = (v) =>
+                String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+              const hidden = ["response_type", "client_id", "redirect_uri", "code_challenge", "code_challenge_method", "state", "scope", "resource"]
+                .map((k) => `<input type="hidden" name="${k}" value="${esc(q.get(k))}">`)
+                .join("");
+              const bad = method === "POST";
+              res.statusCode = bad ? 401 : 200;
+              res.setHeader("content-type", "text/html; charset=utf-8");
+              res.setHeader("cache-control", "no-store");
+              res.setHeader("x-frame-options", "DENY");
+              res.setHeader("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'");
+              res.end(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Authorize Echo Swarm</title>
+<style>body{font-family:system-ui,sans-serif;max-width:440px;margin:10vh auto;padding:0 16px;color:#111}input[type=password]{width:100%;padding:10px;font-size:15px;box-sizing:border-box}button{margin-top:12px;padding:10px 18px;font-size:15px}.e{color:#b00020}code{word-break:break-all}</style></head>
+<body><h2>Authorize Echo Swarm</h2><p>Client <code>${esc(client_id)}</code> requests <code>${esc(scope || "swarm.read swarm.write")}</code>.</p>
+<p>Redirect: <code>${esc(redirect_uri)}</code></p>${bad ? '<p class="e">Owner key rejected.</p>' : ""}
+<form method="post" action="/oauth/authorize">${hidden}<label>Owner key<br><input type="password" name="owner_key" autocomplete="current-password" autofocus required></label><br><button type="submit">Approve</button></form></body></html>`);
+              return;
+            }
             const code = store.issueCode(client_id, redirect_uri, challenge, scope);
             const loc = new URL(redirect_uri);
             loc.searchParams.set("code", code);
             if (state) loc.searchParams.set("state", state);
             res.statusCode = 302;
             res.setHeader("location", loc.toString());
+            res.setHeader("cache-control", "no-store");
             cors(res);
             res.end();
             return;
