@@ -9,7 +9,7 @@ provider key).
 
 The roster is a file produced by ``python -m echo_fusion_worker.fleet_lanes build``:
 it discovers live lanes with ``echo.llm.list``, canaries each candidate with a
-24-token probe, keeps the lanes that answer as themselves within the token cap, and records pricing so the core's
+512-token probe, keeps the lanes that answer as themselves within the token cap, and records pricing so the core's
 budget policy can bound every run. Seat readiness (``probe``) is answered from
 that roster, never by spending on a live call during ``/health``.
 """
@@ -123,11 +123,14 @@ def served_mismatch(body: dict[str, Any], provider: str, model: str) -> str | No
     return None
 
 
-CANARY_MAX_TOKENS = 24
-CANARY_PROMPT = "Reply with the single word READY, then count from 1 to 400 separated by spaces."
+# Large enough for reasoning models that honor the cap to still answer; long-form prompt so a
+# lane that ignores the cap (uncapped reasoning tokens) visibly overruns it.
+CANARY_MAX_TOKENS = 512
+CANARY_PROMPT = ("Write READY on the first line. Then explain in detail, step by step, how a "
+                 "centrifugal pump moves water in an oilfield water-transfer system.")
 
 
-def honors_token_cap(body: dict[str, Any], cap: int, *, slack: int = 8) -> bool:
+def honors_token_cap(body: dict[str, Any], cap: int, *, slack: int = 32) -> bool:
     """The core reserves ``max_output_tokens`` per call and aborts the run on overrun, so a lane
     whose reported completion (e.g. uncapped reasoning tokens) exceeds the cap cannot be seated."""
     usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}

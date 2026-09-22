@@ -237,7 +237,8 @@ def test_trinity_skips_tiny_models_and_ranks_by_strength() -> None:
 
 
 def test_token_cap_compliance_excludes_uncapped_reasoning_lanes() -> None:
-    assert fleet_lanes.honors_token_cap({"usage": {"completion_tokens": 24}, "text": "READY 1 2"}, 24)
-    assert not fleet_lanes.honors_token_cap({"usage": {"completion_tokens": 851}, "text": "READY"}, 24)
-    assert fleet_lanes.honors_token_cap({"text": "READY 1 2 3 4 5"}, 24)
-    assert not fleet_lanes.honors_token_cap({"text": "x" * 400}, 24)
+    cap = fleet_lanes.CANARY_MAX_TOKENS
+    assert fleet_lanes.honors_token_cap({"usage": {"completion_tokens": cap}, "text": "READY ..."}, cap)
+    assert not fleet_lanes.honors_token_cap({"usage": {"completion_tokens": 2926}, "text": "READY"}, cap)
+    assert fleet_lanes.honors_token_cap({"text": "READY " * 50}, cap)
+    assert not fleet_lanes.honors_token_cap({"text": "x" * 8000}, cap)
