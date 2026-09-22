@@ -588,6 +588,9 @@ export const VARIANTS: Record<ModelId, ModelVariant[]> = {
     { id: "zai-glm-4.7", label: "GLM 4.7" },
   ],
   fireworks: [
+    { id: "accounts/fireworks/models/deepseek-v4p1-flash", label: "DeepSeek V4.1 Flash" },
+    { id: "accounts/fireworks/models/glm-5p3", label: "GLM 5.3" },
+    { id: "accounts/fireworks/models/kimi-k3", label: "Kimi K3" },
     { id: "accounts/fireworks/models/gpt-oss-120b", label: "GPT OSS 120B" },
     { id: "accounts/fireworks/models/deepseek-v3p1", label: "DeepSeek V3.1" },
     { id: "accounts/fireworks/models/deepseek-v3", label: "DeepSeek V3" },
