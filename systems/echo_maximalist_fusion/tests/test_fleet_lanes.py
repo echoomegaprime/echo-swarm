@@ -250,3 +250,14 @@ def test_list_price_estimates_replace_the_flat_guess_for_known_providers() -> No
     assert fleet_lanes.lane_pricing({"provider": "openai", "model_id": "gpt-4o"})[:2] == (2.5, 10.0)
     assert fleet_lanes.lane_pricing({"provider": "openai", "model_id": "gpt-4o-mini"})[:2] == (0.15, 0.6)
     assert fleet_lanes.lane_pricing({"provider": "mystery", "model_id": "x"})[2] == "unpriced_conservative_estimate"
+
+
+def test_direct_vendor_lanes_get_list_estimates_and_families() -> None:
+    from echo_fusion_worker.fleet_lanes import lane_pricing, model_family
+    assert lane_pricing({"provider": "xai", "model_id": "grok-4.7"})[2] == "provider_list_estimate"
+    assert lane_pricing({"provider": "google", "model_id": "gemini-2.5-flash-lite"})[:2] == (0.1, 0.4)
+    assert lane_pricing({"provider": "google", "model_id": "gemini-3.5-flash"})[:2] == (0.3, 2.5)
+    assert lane_pricing({"provider": "cohere", "model_id": "command-r7b-12-2024"})[:2] == (0.0375, 0.15)
+    assert lane_pricing({"provider": "deepseek", "model_id": "deepseek-flash"})[:2] == (0.3, 1.2)
+    assert model_family("cohere", "c4ai-aya-expanse-32b") == "cohere"
+    assert model_family("xai", "grok-4.7") == "xai"
