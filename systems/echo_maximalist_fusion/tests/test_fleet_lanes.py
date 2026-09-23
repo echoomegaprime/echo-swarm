@@ -345,3 +345,9 @@ def test_groq_reasoning_lanes_request_effort_controls() -> None:
     assert lane_call_controls("groq", "openai/gpt-oss-120b") == {"reasoning_effort": "low"}
     assert lane_call_controls("groq", "qwen/qwen3.8-27b") == {"reasoning_effort": "none"}
     assert lane_call_controls("groq", "allam-2-7b") == {}
+
+
+def test_excluded_providers_parse() -> None:
+    from echo_fusion_worker.fleet_lanes import excluded_providers
+    assert excluded_providers("groq, Perplexity ,") == {"groq", "perplexity"}
+    assert excluded_providers("") == set()

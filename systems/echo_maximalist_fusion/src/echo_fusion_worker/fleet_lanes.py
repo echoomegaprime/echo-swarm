@@ -48,6 +48,15 @@ SUBSCRIPTION_POOL_PROVIDERS = frozenset({"anthropic"})
 POOL_PURPOSE = "judge"
 
 
+EXCLUDE_PROVIDERS_ENV = "MAXIMALIST_FLEET_EXCLUDE_PROVIDERS"
+
+
+def excluded_providers(raw: str | None = None) -> set[str]:
+    """Providers kept out of the roster, e.g. groq while its tier caps requests (8K TPM) below seat prompt size."""
+    value = os.environ.get(EXCLUDE_PROVIDERS_ENV, "") if raw is None else raw
+    return {item.strip().lower() for item in value.split(",") if item.strip()}
+
+
 def is_pool_lane(provider: str) -> bool:
     return provider.strip().lower() in SUBSCRIPTION_POOL_PROVIDERS
 # Lanes whose default reasoning spends the whole reserved output cap before emitting text.
@@ -529,7 +538,9 @@ def select_trinity_and_planner(lanes: list[dict[str, Any]],
 def reselect_roster(path: Path) -> dict[str, Any]:
     """Re-derive families and Trinity/planner for an existing roster without re-running canaries."""
     document = json.loads(path.read_text(encoding="utf-8"))
-    lanes = [lane for lane in document["lanes"] if not _ROUTER_ALIAS.search(lane["model"])]
+    excluded = excluded_providers()
+    lanes = [lane for lane in document["lanes"]
+             if not _ROUTER_ALIAS.search(lane["model"]) and lane["provider"].lower() not in excluded]
     for lane in lanes:
         lane["family"] = model_family(lane["provider"], lane["model"])
         if lane.get("pricing_source") == "unpriced_conservative_estimate":
@@ -575,8 +586,10 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
     for lane in lanes:
         if f"{lane.get('provider')}{LANE_SEPARATOR}{lane.get('model_id')}" in pins and lane not in candidates:
             candidates.append(lane)
+    excluded = excluded_providers()
     candidates = [lane for lane in candidates
-                  if not is_pool_lane(str(lane.get("provider", "")))
+                  if str(lane.get("provider", "")).lower() not in excluded
+                  and not is_pool_lane(str(lane.get("provider", "")))
                   or f"{lane.get('provider')}{LANE_SEPARATOR}{lane.get('model_id')}" in pins]
     semaphore = asyncio.Semaphore(concurrency)
 
