@@ -40,6 +40,13 @@ ROSTER_SCHEMA = "echo.maximalist.fleet-roster.v1"
 DEFAULT_ROSTER_PATH = "/var/lib/echo/maximalist-fleet/roster.json"
 DEFAULT_GATE_BASE = "http://127.0.0.1:8000"
 DEFAULT_MAX_ROSTER_AGE_SECONDS = 36 * 3600
+TRINITY_PINS_ENV = "MAXIMALIST_FLEET_TRINITY_PINS"
+
+
+def trinity_pins(raw: str | None = None) -> list[str]:
+    """Commander-pinned Trinity lanes (``provider::model`` refs, comma separated), in seat order."""
+    value = os.environ.get(TRINITY_PINS_ENV, "") if raw is None else raw
+    return [ref.strip() for ref in value.split(",") if LANE_SEPARATOR in ref.strip()]
 SEAT_COUNT = 40
 # Lanes without published pricing are metered at a deliberately high estimate so the
 # budget policy over-counts rather than silently treating them as free.
@@ -53,6 +60,9 @@ _LIST_PRICE_ESTIMATES: tuple[tuple[str, str, float, float], ...] = (
     (r"^cloudflare$", r".", 0.5, 3.0),
     (r"^groq$", r".", 0.8, 1.0),
     (r"^xai$", r"grok", 3.0, 15.0),
+    (r"^openai$", r"gpt-6", 5.0, 30.0),
+    (r"^anthropic-api$", r"opus", 5.0, 25.0),
+    (r"^anthropic-api$", r".", 3.0, 15.0),
     (r"^google$", r"flash-lite|gemma", 0.1, 0.4),
     (r"^google$", r"flash", 0.3, 2.5),
     (r"^google$", r"pro", 2.5, 15.0),
@@ -393,9 +403,18 @@ def lane_strength(lane: dict[str, Any]) -> float:
     return score
 
 
-def select_trinity_and_planner(lanes: list[dict[str, Any]]) -> tuple[list[str], str]:
-    """Trinity: the three strongest distinct families (strongest lane in each; ultra-premium
-    published lanes above the cap are skipped). Planner: a cheap, JSON-reliable lane."""
+def select_trinity_and_planner(lanes: list[dict[str, Any]],
+                               pins: list[str] | None = None) -> tuple[list[str], str]:
+    """Trinity: pinned lanes first (when verified in the roster), then the strongest distinct
+    families (strongest lane in each; ultra-premium published lanes above the cap are skipped).
+    Planner: a cheap, JSON-reliable lane."""
+    pins = trinity_pins() if pins is None else pins
+    by_ref = {lane["ref"]: lane for lane in lanes}
+    pinned: list[dict[str, Any]] = []
+    for ref in pins:
+        lane = by_ref.get(ref)
+        if lane is not None and lane["family"] not in {item["family"] for item in pinned}:
+            pinned.append(lane)
     pool = [lane for lane in lanes
             if not (lane.get("pricing_source", "").startswith("published")
                     and float(lane["output_usd_per_million"]) > _TRINITY_MAX_OUTPUT_USD_PER_MILLION)]
@@ -405,10 +424,14 @@ def select_trinity_and_planner(lanes: list[dict[str, Any]]) -> tuple[list[str], 
         if current is None or (lane_strength(lane), -int(lane.get("latency_ms", 0))) > (
                 lane_strength(current), -int(current.get("latency_ms", 0))):
             best_by_family[lane["family"]] = lane
-    ranked = sorted(best_by_family.values(), key=lambda lane: -lane_strength(lane))
-    trinity = [lane for lane in ranked if lane_strength(lane) > 30][:3]
-    if len(trinity) < 3:
-        trinity = ranked[:3]
+    taken = {lane["family"] for lane in pinned[:3]}
+    ranked = sorted((lane for lane in best_by_family.values() if lane["family"] not in taken),
+                    key=lambda lane: -lane_strength(lane))
+    open_seats = 3 - len(pinned[:3])
+    fill = [lane for lane in ranked if lane_strength(lane) > 30][:open_seats]
+    if len(fill) < open_seats:
+        fill = ranked[:open_seats]
+    trinity = pinned[:3] + fill
     if len(trinity) < 3:
         raise ValueError("fleet roster cannot seat a three-family Trinity")
     planner = next((lane for marker in _PLANNER_MODELS for lane in lanes if marker in lane["model"].lower()),
@@ -426,7 +449,10 @@ def reselect_roster(path: Path) -> dict[str, Any]:
             rate_in, rate_out, source = lane_pricing({"provider": lane["provider"], "model_id": lane["model"]})
             lane.update(input_usd_per_million=rate_in, output_usd_per_million=rate_out, pricing_source=source)
     document["lanes"] = lanes
-    document["trinity"], document["planner"] = select_trinity_and_planner(lanes)
+    pins = trinity_pins()
+    document["trinity"], document["planner"] = select_trinity_and_planner(lanes, pins)
+    document["trinity_pins"] = pins
+    document["trinity_pin_misses"] = [ref for ref in pins if ref not in document["trinity"]]
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(document, indent=1), encoding="utf-8")
     os.replace(temporary, path)
@@ -457,6 +483,10 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
     for lane in lanes:
         if lane.get("health_status") == "degraded" and degraded.get(lane["provider"], 0) < include_degraded:
             degraded[lane["provider"]] = degraded.get(lane["provider"], 0) + 1
+            candidates.append(lane)
+    pins = trinity_pins()
+    for lane in lanes:
+        if f"{lane.get('provider')}{LANE_SEPARATOR}{lane.get('model_id')}" in pins and lane not in candidates:
             candidates.append(lane)
     semaphore = asyncio.Semaphore(concurrency)
 
@@ -493,11 +523,12 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
     kept: list[dict[str, Any]] = []
     for family in sorted({item["family"] for item in passing}):
         kept.extend([item for item in passing if item["family"] == family][:per_family])
+    kept.extend(item for item in passing if item["ref"] in pins and item not in kept)
     families = {item["family"] for item in kept}
     if len(families) < 3:
         raise SystemExit(f"only {len(families)} model families passed the canary; refusing to write a clone roster")
 
-    trinity, planner = select_trinity_and_planner(kept)
+    trinity, planner = select_trinity_and_planner(kept, pins)
     document = {
         "schema": ROSTER_SCHEMA, "generated_at": time.time(),
         "generated_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

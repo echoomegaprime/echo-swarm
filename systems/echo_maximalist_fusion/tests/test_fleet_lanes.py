@@ -261,3 +261,38 @@ def test_direct_vendor_lanes_get_list_estimates_and_families() -> None:
     assert lane_pricing({"provider": "deepseek", "model_id": "deepseek-flash"})[:2] == (0.3, 1.2)
     assert model_family("cohere", "c4ai-aya-expanse-32b") == "cohere"
     assert model_family("xai", "grok-4.7") == "xai"
+
+
+def _pin_lane(ref: str, family: str, strength_model: str | None = None) -> dict:
+    provider, model = ref.split("::", 1)
+    return {"ref": ref, "provider": provider, "model": strength_model or model, "family": family,
+            "input_usd_per_million": 1.0, "output_usd_per_million": 5.0,
+            "pricing_source": "provider_list_estimate", "latency_ms": 100}
+
+
+def test_trinity_pins_take_seats_first_and_fill_the_rest_by_strength() -> None:
+    from echo_fusion_worker.fleet_lanes import select_trinity_and_planner, trinity_pins
+    lanes = [_pin_lane("xai::grok-4.3", "xai"), _pin_lane("xai::grok-4.6", "xai"),
+             _pin_lane("openai::gpt-6-astra", "openai"), _pin_lane("openai::gpt-4o", "openai"),
+             _pin_lane("together::meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta"),
+             _pin_lane("openrouter::nvidia/nemotron-3-ultra-550b-a55b:free", "nvidia")]
+    pins = trinity_pins("openai::gpt-6-astra, xai::grok-4.6, anthropic::claude-opus-5-5")
+    trinity, _ = select_trinity_and_planner(lanes, pins)
+    assert trinity[:2] == ["openai::gpt-6-astra", "xai::grok-4.6"]
+    assert len(trinity) == 3 and trinity[2] not in {"xai::grok-4.3", "openai::gpt-4o"}
+
+
+def test_trinity_pins_ignore_missing_lanes_and_duplicate_families() -> None:
+    from echo_fusion_worker.fleet_lanes import select_trinity_and_planner
+    lanes = [_pin_lane("xai::grok-4.6", "xai"), _pin_lane("xai::grok-4.7", "xai"),
+             _pin_lane("openai::gpt-4o", "openai"), _pin_lane("together::meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta")]
+    trinity, _ = select_trinity_and_planner(lanes, ["xai::grok-4.6", "xai::grok-4.7", "anthropic::claude-opus-5-5"])
+    assert trinity[0] == "xai::grok-4.6" and "xai::grok-4.7" not in trinity and len(set(trinity)) == 3
+
+
+def test_pinned_trinity_vendors_are_priced_and_family_mapped() -> None:
+    from echo_fusion_worker.fleet_lanes import lane_pricing, model_family
+    assert lane_pricing({"provider": "openai", "model_id": "gpt-6-astra"})[:2] == (5.0, 30.0)
+    assert lane_pricing({"provider": "anthropic-api", "model_id": "claude-opus-5-5"})[:2] == (5.0, 25.0)
+    assert model_family("anthropic-api", "claude-opus-5-5") == "anthropic"
+    assert model_family("openai", "gpt-6-astra") == "openai"
