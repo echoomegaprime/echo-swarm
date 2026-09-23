@@ -41,6 +41,18 @@ DEFAULT_ROSTER_PATH = "/var/lib/echo/maximalist-fleet/roster.json"
 DEFAULT_GATE_BASE = "http://127.0.0.1:8000"
 DEFAULT_MAX_ROSTER_AGE_SECONDS = 36 * 3600
 TRINITY_PINS_ENV = "MAXIMALIST_FLEET_TRINITY_PINS"
+# Lanes whose default reasoning spends the whole reserved output cap before emitting text.
+_REASONING_EFFORT_RULES: tuple[tuple[str, str, str], ...] = (
+    (r"^openai$", r"^gpt-(5|6)", "low"),
+)
+
+
+def lane_call_controls(provider: str, model: str) -> dict[str, str]:
+    """Extra echo.llm.call params a lane needs to answer inside the reserved token cap."""
+    for provider_pattern, model_pattern, effort in _REASONING_EFFORT_RULES:
+        if re.search(provider_pattern, provider.lower()) and re.search(model_pattern, model.lower()):
+            return {"reasoning_effort": effort}
+    return {}
 
 
 def trinity_pins(raw: str | None = None) -> list[str]:
@@ -157,6 +169,10 @@ def served_mismatch(body: dict[str, Any], provider: str, model: str) -> str | No
 CANARY_MAX_TOKENS = 512
 CANARY_PROMPT = ("Write READY on the first line. Then explain in detail, step by step, how a "
                  "centrifugal pump moves water in an oilfield water-transfer system.")
+
+
+COMPACT_CANARY_PROMPT = ('Return only compact JSON: {"status": "READY", "summary": "<one sentence on why UPS '
+                         'plus automatic restart protects a home AI cluster from storm outages>"}')
 
 
 def honors_token_cap(body: dict[str, Any], cap: int, *, slack: int = 32) -> bool:
@@ -295,7 +311,8 @@ class FleetGateAdapter:
             "echo.llm.call",
             {"provider": provider, "model": model, "prompt": prompt,
              "max_tokens": int(request.max_output_tokens), "temperature": 0 if trinity else 0.3,
-             "purpose": f"maximalist_fleet:{request.phase}:{request.seat_id}", "allow_reroute": False},
+             "purpose": f"maximalist_fleet:{request.phase}:{request.seat_id}", "allow_reroute": False,
+             **lane_call_controls(provider, model)},
             reason=f"MAXIMALIST fleet_live seat {request.seat_id} ({request.role}) via lane {provider}/{model}",
         )
         if not body.get("ok"):
@@ -499,24 +516,35 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
                   "catalog_health": lane.get("health_status")}
         if rate_in > max_input_usd_per_million:
             return {**record, "ok": False, "error": "input price above roster ceiling"}
-        async with semaphore:
-            started = time.monotonic()
-            try:
-                body = await gate.invoke("echo.llm.call", {
-                    "provider": provider, "model": model, "prompt": CANARY_PROMPT,
-                    "max_tokens": CANARY_MAX_TOKENS, "temperature": 0, "purpose": "maximalist_fleet_roster_canary",
-                    "allow_reroute": False},
-                    reason=f"MAXIMALIST fleet roster canary ({CANARY_MAX_TOKENS} tokens) for lane {provider}/{model}", timeout=75)
-            except Exception as exc:  # noqa: BLE001 - every failure is recorded, none is fatal
-                return {**record, "ok": False, "error": f"{type(exc).__name__}: {str(exc)[:120]}"}
-            latency = int((time.monotonic() - started) * 1000)
-        text = str(body.get("text") or "")
-        mismatch = served_mismatch(body, provider, model) if body.get("ok") else None
-        if body.get("ok") and not mismatch and not honors_token_cap(body, CANARY_MAX_TOKENS):
-            mismatch = "does not honor max_tokens (reported completion exceeds the reserved cap)"
-        ok = bool(body.get("ok")) and not mismatch and "ready" in text.lower()
-        return {**record, "ok": ok, "latency_ms": latency,
-                "error": None if ok else str(mismatch or body.get("error") or text[:80] or "no text")[:160]}
+        async def probe(prompt: str) -> tuple[bool, int, str | None]:
+            async with semaphore:
+                started = time.monotonic()
+                try:
+                    body = await gate.invoke("echo.llm.call", {
+                        "provider": provider, "model": model, "prompt": prompt,
+                        "max_tokens": CANARY_MAX_TOKENS, "temperature": 0, "purpose": "maximalist_fleet_roster_canary",
+                        "allow_reroute": False, **lane_call_controls(provider, model)},
+                        reason=f"MAXIMALIST fleet roster canary ({CANARY_MAX_TOKENS} tokens) for lane {provider}/{model}",
+                        timeout=75)
+                except Exception as exc:  # noqa: BLE001 - every failure is recorded, none is fatal
+                    return False, 0, f"{type(exc).__name__}: {str(exc)[:120]}"
+                latency = int((time.monotonic() - started) * 1000)
+            text = str(body.get("text") or "")
+            mismatch = served_mismatch(body, provider, model) if body.get("ok") else None
+            if body.get("ok") and not mismatch and not honors_token_cap(body, CANARY_MAX_TOKENS):
+                mismatch = "does not honor max_tokens (reported completion exceeds the reserved cap)"
+            ok = bool(body.get("ok")) and not mismatch and "ready" in text.lower()
+            return ok, latency, None if ok else str(mismatch or body.get("error") or text[:80] or "no text")[:160]
+
+        ok, latency, error = await probe(CANARY_PROMPT)
+        mode = "long_form"
+        if not ok and record["ref"] in pins and "empty content" in str(error):
+            # Pinned lanes that spend a long-form budget on reasoning still get seated when they answer a
+            # compact Trinity-style prompt inside the same cap; seat failures at runtime stay non-fatal.
+            ok, latency, compact_error = await probe(COMPACT_CANARY_PROMPT)
+            mode = "compact_pin"
+            error = None if ok else f"{error}; compact: {compact_error}"
+        return {**record, "ok": ok, "latency_ms": latency, "canary_mode": mode, "error": error}
 
     results = await asyncio.gather(*(canary(lane) for lane in candidates))
     passing = sorted((item for item in results if item["ok"]), key=lambda item: (item["family"], item["latency_ms"]))
@@ -534,7 +562,7 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
         "generated_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "profile": "MAXIMALIST_RECONSTRUCTED", "historical_parity": False,
         "lanes": [{key: item[key] for key in ("ref", "provider", "model", "family", "input_usd_per_million",
-                                              "output_usd_per_million", "pricing_source", "latency_ms")}
+                                              "output_usd_per_million", "pricing_source", "latency_ms", "canary_mode")}
                   for item in kept],
         "trinity": trinity, "planner": planner,
         "canary": {"candidates": len(candidates), "passed": len(passing),

@@ -296,3 +296,11 @@ def test_pinned_trinity_vendors_are_priced_and_family_mapped() -> None:
     assert lane_pricing({"provider": "anthropic-api", "model_id": "claude-opus-5-5"})[:2] == (5.0, 25.0)
     assert model_family("anthropic-api", "claude-opus-5-5") == "anthropic"
     assert model_family("openai", "gpt-6-astra") == "openai"
+
+
+def test_openai_reasoning_lanes_request_low_effort_and_others_do_not() -> None:
+    from echo_fusion_worker.fleet_lanes import lane_call_controls
+    assert lane_call_controls("openai", "gpt-6-astra") == {"reasoning_effort": "low"}
+    assert lane_call_controls("openai", "gpt-5.6-sol") == {"reasoning_effort": "low"}
+    assert lane_call_controls("openai", "gpt-4o") == {}
+    assert lane_call_controls("xai", "grok-4.6") == {}
