@@ -304,3 +304,24 @@ def test_openai_reasoning_lanes_request_low_effort_and_others_do_not() -> None:
     assert lane_call_controls("openai", "gpt-5.6-sol") == {"reasoning_effort": "low"}
     assert lane_call_controls("openai", "gpt-4o") == {}
     assert lane_call_controls("xai", "grok-4.6") == {}
+
+
+def test_gpt6_lanes_get_a_wider_reserved_output_envelope() -> None:
+    from maximalist_reconstructed.providers import ProviderRequest
+    from echo_fusion_worker.fleet_lanes import FLEET_PROVIDER, FleetProviderRegistry, lane_output_floor
+
+    class _Adapter:
+        name = FLEET_PROVIDER
+
+    assert lane_output_floor("openai", "gpt-6-astra", "2048") == 2048
+    assert lane_output_floor("openai", "gpt-4o", "2048") == 0
+    assert lane_output_floor("openai", "gpt-6-astra", "99999") == 4096
+    registry = FleetProviderRegistry()
+    registry.register(FLEET_PROVIDER, _Adapter())
+    base = dict(provider=FLEET_PROVIDER, seat_id="trinity_a", role="trinity", prompt="p", context={}, phase="trinity",
+                max_output_tokens=512)
+    _, widened = registry.prepare(ProviderRequest(model="openai::gpt-6-astra", **base))
+    _, plain = registry.prepare(ProviderRequest(model="xai::grok-4.6", **base))
+    assert widened.max_output_tokens == 2048 and plain.max_output_tokens == 2048  # trinity phase floor
+    _, seat = registry.prepare(ProviderRequest(model="xai::grok-4.6", **{**base, "phase": "independent"}))
+    assert seat.max_output_tokens == 512

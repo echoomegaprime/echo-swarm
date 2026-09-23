@@ -23,7 +23,7 @@ import re
 import sys
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -45,6 +45,38 @@ TRINITY_PINS_ENV = "MAXIMALIST_FLEET_TRINITY_PINS"
 _REASONING_EFFORT_RULES: tuple[tuple[str, str, str], ...] = (
     (r"^openai$", r"^gpt-(5|6)", "low"),
 )
+
+
+OUTPUT_FLOOR_ENV = "MAXIMALIST_FLEET_REASONING_OUTPUT_TOKENS"
+# Lanes that ration small caps into pure reasoning (GPT-6 Astra: 512/1024 -> empty text on a 20K-token
+# Trinity prompt, 2048 -> 0 reasoning + full answer). They get a larger reserved envelope per call; the
+# core reserves and accounts for the enlarged cap, so the budget ledger stays exact.
+_OUTPUT_FLOOR_RULES: tuple[tuple[str, str], ...] = (
+    (r"^openai$", r"^gpt-6"),
+)
+
+
+TRINITY_OUTPUT_ENV = "MAXIMALIST_FLEET_TRINITY_OUTPUT_TOKENS"
+
+
+def trinity_output_floor(raw: str | None = None) -> int:
+    """Trinity judges emit a full fused JSON verdict; 512 truncates it (invalid JSON on grok-4.6 / nemotron)."""
+    value = os.environ.get(TRINITY_OUTPUT_ENV, "2048") if raw is None else raw
+    try:
+        return min(max(int(value), 0), 4096)
+    except ValueError:
+        return 2048
+
+
+def lane_output_floor(provider: str, model: str, raw: str | None = None) -> int:
+    for provider_pattern, model_pattern in _OUTPUT_FLOOR_RULES:
+        if re.search(provider_pattern, provider.lower()) and re.search(model_pattern, model.lower()):
+            value = os.environ.get(OUTPUT_FLOOR_ENV, "2048") if raw is None else raw
+            try:
+                return min(max(int(value), 0), 4096)
+            except ValueError:
+                return 2048
+    return 0
 
 
 def lane_call_controls(provider: str, model: str) -> dict[str, str]:
@@ -389,8 +421,23 @@ def fleet_registry(roster: FleetRoster, seat_count: int = SEAT_COUNT) -> SeatReg
                         planner=seat("planner", roster.lane(roster.planner), "planner", ("planning",)))
 
 
+class FleetProviderRegistry(ProviderRegistry):
+    """Registry that widens the reserved output envelope for lanes listed in ``_OUTPUT_FLOOR_RULES``."""
+
+    def prepare(self, request: ProviderRequest, **kwargs: Any) -> tuple[Any, ProviderRequest]:
+        adapter, resolved = super().prepare(request, **kwargs)
+        if LANE_SEPARATOR in str(resolved.model):
+            provider, model = split_lane_ref(str(resolved.model))
+            floor = lane_output_floor(provider, model)
+            if resolved.phase == "trinity":
+                floor = max(floor, trinity_output_floor())
+            if floor > int(resolved.max_output_tokens):
+                resolved = replace(resolved, max_output_tokens=floor)
+        return adapter, resolved
+
+
 def build_fleet_providers(roster: FleetRoster) -> ProviderRegistry:
-    providers = ProviderRegistry()
+    providers = FleetProviderRegistry()
     providers.register(FLEET_PROVIDER, FleetGateAdapter(roster))
     return providers
 
