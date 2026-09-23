@@ -53,6 +53,8 @@ def is_pool_lane(provider: str) -> bool:
 # Lanes whose default reasoning spends the whole reserved output cap before emitting text.
 _REASONING_EFFORT_RULES: tuple[tuple[str, str, str], ...] = (
     (r"^openai$", r"^gpt-(5|6)", "low"),
+    (r"^groq$", r"gpt-oss", "low"),
+    (r"^groq$", r"qwen3", "none"),
 )
 
 
@@ -610,7 +612,7 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
 
         ok, latency, error = await probe(CANARY_PROMPT)
         mode = "long_form"
-        if not ok and record["ref"] in pins and ("empty content" in str(error) or "does not honor max_tokens" in str(error)):
+        if not ok and record["ref"] in pins and any(marker in str(error) for marker in ("empty content", "does not honor max_tokens", "Timeout", "timed out")):
             # Pinned lanes that spend a long-form budget on reasoning still get seated when they answer a
             # compact Trinity-style prompt inside the same cap; seat failures at runtime stay non-fatal.
             ok, latency, compact_error = await probe(COMPACT_CANARY_PROMPT)
@@ -624,6 +626,10 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
     for family in sorted({item["family"] for item in passing}):
         kept.extend([item for item in passing if item["family"] == family][:per_family])
     kept.extend(item for item in passing if item["ref"] in pins and item not in kept)
+    # Provider diversity: every provider with a passing lane keeps at least its fastest one, so a fast
+    # vendor (e.g. Groq) is never crowded out of a family by other vendors serving the same family.
+    for provider in sorted({item["provider"] for item in passing} - {item["provider"] for item in kept}):
+        kept.append(min((item for item in passing if item["provider"] == provider), key=lambda item: item["latency_ms"]))
     families = {item["family"] for item in kept}
     if len(families) < 3:
         raise SystemExit(f"only {len(families)} model families passed the canary; refusing to write a clone roster")

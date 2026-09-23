@@ -338,3 +338,10 @@ def test_claude_cli_pool_lanes_are_trinity_only_judge_and_subscription_priced() 
              _pin_lane("together::meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta")]
     trinity, _ = select_trinity_and_planner(lanes, ["openai::gpt-6-astra", "xai::grok-4.6", "anthropic::claude-opus-5-5"])
     assert trinity == ["openai::gpt-6-astra", "xai::grok-4.6", "anthropic::claude-opus-5-5"]
+
+
+def test_groq_reasoning_lanes_request_effort_controls() -> None:
+    from echo_fusion_worker.fleet_lanes import lane_call_controls
+    assert lane_call_controls("groq", "openai/gpt-oss-120b") == {"reasoning_effort": "low"}
+    assert lane_call_controls("groq", "qwen/qwen3.8-27b") == {"reasoning_effort": "none"}
+    assert lane_call_controls("groq", "allam-2-7b") == {}
