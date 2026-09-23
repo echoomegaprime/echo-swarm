@@ -41,6 +41,15 @@ DEFAULT_ROSTER_PATH = "/var/lib/echo/maximalist-fleet/roster.json"
 DEFAULT_GATE_BASE = "http://127.0.0.1:8000"
 DEFAULT_MAX_ROSTER_AGE_SECONDS = 36 * 3600
 TRINITY_PINS_ENV = "MAXIMALIST_FLEET_TRINITY_PINS"
+# Claude Max subscription lanes (gate call_kind anthropic_cli = Claude Code CLI subprocess). The gate pool
+# guard admits them only for judge/premium/tournament/commander purposes, and they spend subscription
+# quota, so they seat Trinity only (never the 40 independent seats) and call with purpose "judge".
+SUBSCRIPTION_POOL_PROVIDERS = frozenset({"anthropic"})
+POOL_PURPOSE = "judge"
+
+
+def is_pool_lane(provider: str) -> bool:
+    return provider.strip().lower() in SUBSCRIPTION_POOL_PROVIDERS
 # Lanes whose default reasoning spends the whole reserved output cap before emitting text.
 _REASONING_EFFORT_RULES: tuple[tuple[str, str, str], ...] = (
     (r"^openai$", r"^gpt-(5|6)", "low"),
@@ -51,8 +60,10 @@ OUTPUT_FLOOR_ENV = "MAXIMALIST_FLEET_REASONING_OUTPUT_TOKENS"
 # Lanes that ration small caps into pure reasoning (GPT-6 Astra: 512/1024 -> empty text on a 20K-token
 # Trinity prompt, 2048 -> 0 reasoning + full answer). They get a larger reserved envelope per call; the
 # core reserves and accounts for the enlarged cap, so the budget ledger stays exact.
-_OUTPUT_FLOOR_RULES: tuple[tuple[str, str], ...] = (
-    (r"^openai$", r"^gpt-6"),
+_OUTPUT_FLOOR_RULES: tuple[tuple[str, str, str], ...] = (
+    (r"^openai$", r"^gpt-6", "2048"),
+    # The Claude Code CLI has no max-tokens flag, so pool lanes reserve the maximum envelope.
+    (r"^anthropic$", r".", "4096"),
 )
 
 
@@ -69,9 +80,11 @@ def trinity_output_floor(raw: str | None = None) -> int:
 
 
 def lane_output_floor(provider: str, model: str, raw: str | None = None) -> int:
-    for provider_pattern, model_pattern in _OUTPUT_FLOOR_RULES:
+    for provider_pattern, model_pattern, default in _OUTPUT_FLOOR_RULES:
         if re.search(provider_pattern, provider.lower()) and re.search(model_pattern, model.lower()):
-            value = os.environ.get(OUTPUT_FLOOR_ENV, "2048") if raw is None else raw
+            if raw is None and is_pool_lane(provider):
+                return int(default)
+            value = os.environ.get(OUTPUT_FLOOR_ENV, default) if raw is None else raw
             try:
                 return min(max(int(value), 0), 4096)
             except ValueError:
@@ -247,6 +260,8 @@ def lane_pricing(lane: dict[str, Any]) -> tuple[float, float, str]:
                 return rate_in, rate_out, "published_per_million"
     if str(lane.get("provider", "")).startswith("ollama-local"):
         return 0.0, 0.0, "local_zero_cost"
+    if is_pool_lane(str(lane.get("provider", ""))):
+        return 0.0, 0.0, "subscription_pool"
     provider = str(lane.get("provider", "")).lower()
     model = str(lane.get("model_id") or lane.get("model") or "").lower()
     for provider_pattern, model_pattern, rate_in, rate_out in _LIST_PRICE_ESTIMATES:
@@ -336,6 +351,10 @@ class FleetGateAdapter:
         provider, model = split_lane_ref(request.model)
         trinity = request.phase == "trinity"
         prompt = request.prompt
+        if is_pool_lane(provider) and not trinity:
+            raise ProviderError(f"subscription-pool lane {provider}/{model} is Trinity-only", retryable=False)
+        if trinity and is_pool_lane(provider):
+            prompt += "\n\nKeep the entire response under 900 words."
         if trinity:
             prompt += ("\n\nReturn ONLY a JSON object with keys answer (string), confidence (0-1), "
                        "supported_claims, weak_claims, unresolved (arrays of strings).")
@@ -343,8 +362,8 @@ class FleetGateAdapter:
             "echo.llm.call",
             {"provider": provider, "model": model, "prompt": prompt,
              "max_tokens": int(request.max_output_tokens), "temperature": 0 if trinity else 0.3,
-             "purpose": f"maximalist_fleet:{request.phase}:{request.seat_id}", "allow_reroute": False,
-             **lane_call_controls(provider, model)},
+             "purpose": POOL_PURPOSE if is_pool_lane(provider) else f"maximalist_fleet:{request.phase}:{request.seat_id}",
+             "allow_reroute": False, **lane_call_controls(provider, model)},
             reason=f"MAXIMALIST fleet_live seat {request.seat_id} ({request.role}) via lane {provider}/{model}",
         )
         if not body.get("ok"):
@@ -380,7 +399,9 @@ class FleetGateAdapter:
 def fleet_registry(roster: FleetRoster, seat_count: int = SEAT_COUNT) -> SeatRegistry:
     """Seat ``seat_count`` positions round-robin across families, then lanes within a family."""
     by_family: "OrderedDict[str, list[dict[str, Any]]]" = OrderedDict()
-    for lane in sorted(roster.lanes, key=lambda item: (item["family"], item.get("latency_ms", 0))):
+    seatable = [lane for lane in roster.lanes
+                if not (lane.get("trinity_only") or is_pool_lane(str(lane.get("provider", ""))))]
+    for lane in sorted(seatable, key=lambda item: (item["family"], item.get("latency_ms", 0))):
         by_family.setdefault(lane["family"], []).append(lane)
     order: list[dict[str, Any]] = []
     depth = 0
@@ -552,6 +573,9 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
     for lane in lanes:
         if f"{lane.get('provider')}{LANE_SEPARATOR}{lane.get('model_id')}" in pins and lane not in candidates:
             candidates.append(lane)
+    candidates = [lane for lane in candidates
+                  if not is_pool_lane(str(lane.get("provider", "")))
+                  or f"{lane.get('provider')}{LANE_SEPARATOR}{lane.get('model_id')}" in pins]
     semaphore = asyncio.Semaphore(concurrency)
 
     async def canary(lane: dict[str, Any]) -> dict[str, Any]:
@@ -560,7 +584,7 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
         record = {"ref": lane_ref(provider, model), "provider": provider, "model": model,
                   "family": model_family(provider, model), "input_usd_per_million": rate_in,
                   "output_usd_per_million": rate_out, "pricing_source": source,
-                  "catalog_health": lane.get("health_status")}
+                  "catalog_health": lane.get("health_status"), "trinity_only": is_pool_lane(provider)}
         if rate_in > max_input_usd_per_million:
             return {**record, "ok": False, "error": "input price above roster ceiling"}
         async def probe(prompt: str) -> tuple[bool, int, str | None]:
@@ -569,7 +593,8 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
                 try:
                     body = await gate.invoke("echo.llm.call", {
                         "provider": provider, "model": model, "prompt": prompt,
-                        "max_tokens": CANARY_MAX_TOKENS, "temperature": 0, "purpose": "maximalist_fleet_roster_canary",
+                        "max_tokens": CANARY_MAX_TOKENS, "temperature": 0,
+                        "purpose": POOL_PURPOSE if is_pool_lane(provider) else "maximalist_fleet_roster_canary",
                         "allow_reroute": False, **lane_call_controls(provider, model)},
                         reason=f"MAXIMALIST fleet roster canary ({CANARY_MAX_TOKENS} tokens) for lane {provider}/{model}",
                         timeout=75)
@@ -585,7 +610,7 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
 
         ok, latency, error = await probe(CANARY_PROMPT)
         mode = "long_form"
-        if not ok and record["ref"] in pins and "empty content" in str(error):
+        if not ok and record["ref"] in pins and ("empty content" in str(error) or "does not honor max_tokens" in str(error)):
             # Pinned lanes that spend a long-form budget on reasoning still get seated when they answer a
             # compact Trinity-style prompt inside the same cap; seat failures at runtime stay non-fatal.
             ok, latency, compact_error = await probe(COMPACT_CANARY_PROMPT)
@@ -609,7 +634,8 @@ async def build_roster(*, out: Path, concurrency: int, per_family: int, include_
         "generated_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "profile": "MAXIMALIST_RECONSTRUCTED", "historical_parity": False,
         "lanes": [{key: item[key] for key in ("ref", "provider", "model", "family", "input_usd_per_million",
-                                              "output_usd_per_million", "pricing_source", "latency_ms", "canary_mode")}
+                                              "output_usd_per_million", "pricing_source", "latency_ms", "canary_mode",
+                                              "trinity_only")}
                   for item in kept],
         "trinity": trinity, "planner": planner,
         "canary": {"candidates": len(candidates), "passed": len(passing),

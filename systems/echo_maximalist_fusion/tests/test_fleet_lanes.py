@@ -325,3 +325,16 @@ def test_gpt6_lanes_get_a_wider_reserved_output_envelope() -> None:
     assert widened.max_output_tokens == 2048 and plain.max_output_tokens == 2048  # trinity phase floor
     _, seat = registry.prepare(ProviderRequest(model="xai::grok-4.6", **{**base, "phase": "independent"}))
     assert seat.max_output_tokens == 512
+
+
+def test_claude_cli_pool_lanes_are_trinity_only_judge_and_subscription_priced() -> None:
+    from echo_fusion_worker.fleet_lanes import (POOL_PURPOSE, is_pool_lane, lane_output_floor, lane_pricing,
+                                                select_trinity_and_planner)
+    assert is_pool_lane("anthropic") and not is_pool_lane("anthropic-api") and POOL_PURPOSE == "judge"
+    assert lane_pricing({"provider": "anthropic", "model_id": "claude-opus-5-5"}) == (0.0, 0.0, "subscription_pool")
+    assert lane_output_floor("anthropic", "claude-opus-5-5") == 4096
+    lanes = [_pin_lane("openai::gpt-6-astra", "openai"), _pin_lane("xai::grok-4.6", "xai"),
+             _pin_lane("anthropic::claude-opus-5-5", "anthropic"),
+             _pin_lane("together::meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta")]
+    trinity, _ = select_trinity_and_planner(lanes, ["openai::gpt-6-astra", "xai::grok-4.6", "anthropic::claude-opus-5-5"])
+    assert trinity == ["openai::gpt-6-astra", "xai::grok-4.6", "anthropic::claude-opus-5-5"]
