@@ -40,7 +40,7 @@ CORE_PROFILE = "MAXIMALIST_RECONSTRUCTED"
 CORE_VERSION = "0.5.3"
 CORE_SHA = "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f"
 HISTORICAL_PARITY = False
-SUPPORTED_RUNTIMES = frozenset({"anvil_live", "deterministic_test"})
+SUPPORTED_RUNTIMES = frozenset({"anvil_live", "fleet_live", "deterministic_test"})
 SUPPORTED_ROUTING_POLICIES = frozenset(
     {
         "full_40",
@@ -238,6 +238,16 @@ class PortableCoreEngine:
                 adapter=sdk_adapter,
                 max_calls=capability_limit,
             )
+        self.fleet_roster = None
+        if runtime == "fleet_live":
+            # Heterogeneous roster over gate-brokered lanes (see fleet_lanes). The ANVIL
+            # adapter built above is discarded; capabilities and memory are shared.
+            from .fleet_lanes import FleetRoster, build_fleet_providers, fleet_registry
+
+            self.fleet_roster = FleetRoster.load()
+            self.registry = fleet_registry(self.fleet_roster)
+            self.providers = build_fleet_providers(self.fleet_roster)
+            self.costs = self.fleet_roster.cost_table()
         if selected_fallback_config:
             self.providers.load_fallback_config(selected_fallback_config)
 
@@ -251,6 +261,13 @@ class PortableCoreEngine:
             "provider_mode": self.provider_mode,
             "runtime": self.runtime,
             "configured_seat_count": len(self.registry.seats),
+            "seat_distinct_models": len({seat.model for seat in self.registry.seats}),
+            "seat_model_families": len(
+                {seat.provider_family or seat.provider for seat in self.registry.seats}
+            ),
+            "fleet_roster_age_hours": (
+                round(self.fleet_roster.age_seconds() / 3600, 2) if self.fleet_roster else None
+            ),
             "trinity_separate": True,
             "routing_policy": self.routing_policy,
             "routing_max_seats": self.routing_max_seats,
@@ -348,6 +365,11 @@ class PortableCoreEngine:
             default_provider_concurrency=self._positive_int(
                 os.environ.get("MAXIMALIST_PROVIDER_CONCURRENCY"), 1, 4
             ),
+            provider_concurrency=(
+                {"fleet_gate": self._positive_int(os.environ.get("MAXIMALIST_FLEET_CONCURRENCY"), 8, 16)}
+                if self.runtime == "fleet_live"
+                else {}
+            ),
             require_pricing=self.provider_mode != "deterministic_test",
         )
 
@@ -430,7 +452,7 @@ def _build_portable_engine(cfg: dict[str, Any]) -> PortableCoreEngine:
     runtime = os.environ.get("MAXIMALIST_RUNTIME", "").strip()
     if not runtime:
         raise RuntimeError(
-            "MAXIMALIST_RUNTIME is required for reconstructed_v05; choose anvil_live or deterministic_test"
+            "MAXIMALIST_RUNTIME is required for reconstructed_v05; choose anvil_live, fleet_live or deterministic_test"
         )
     state_dir = os.environ.get("MAXIMALIST_STATE_DIR", "runtime/maximalist-reconstructed-v05")
     memory_file = os.environ.get("MAXIMALIST_MEMORY_FILE", "").strip() or None
