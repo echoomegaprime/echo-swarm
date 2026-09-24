@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { createServer as createViteServer } from "vite";
 
+const TEST_SWARM_TOKEN = (process.env.SWARM_MCP_TOKEN ||= "acceptance-swarm-token-0001");
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 async function jsonBody(request) {
@@ -87,7 +89,11 @@ test("Echo Swarm exposes the recovered sovereign brain through bounded MCP tools
   const baseUrl = vite.resolvedUrls?.local[0];
   assert(baseUrl, "Vite did not expose a local URL");
   const endpoint = new URL("api/plugin/mcp", baseUrl);
-  const headers = { "content-type": "application/json", "x-echo-agent": "codex" };
+  const headers = {
+    "content-type": "application/json",
+    "x-echo-agent": "codex",
+    "x-swarm-token": TEST_SWARM_TOKEN,
+  };
 
   async function rpc(id, name, args = {}) {
     const response = await fetch(endpoint, {

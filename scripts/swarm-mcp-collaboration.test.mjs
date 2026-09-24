@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { createServer as createViteServer } from "vite";
 
+const TEST_SWARM_TOKEN = (process.env.SWARM_MCP_TOKEN ||= "acceptance-swarm-token-0001");
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("swarm_convene brings model work back as chat-ready structured output", async (t) => {
@@ -56,6 +58,7 @@ test("swarm_convene brings model work back as chat-ready structured output", asy
   const agentHeaders = {
     "content-type": "application/json",
     "x-echo-agent": "acceptance-test",
+    "x-swarm-token": TEST_SWARM_TOKEN,
   };
 
   const vite = await createViteServer({
