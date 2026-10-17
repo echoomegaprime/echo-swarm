@@ -8,6 +8,13 @@
  * token store is loaded via ssrLoadModule so it shares the app's module realm.
  */
 import nodeCrypto from "node:crypto";
+import {
+  commanderConsent,
+  consentRedirect,
+  handleConsentRoute,
+  publicOrigin,
+  telegramConsentEnabled,
+} from "./oauth-telegram-consent.mjs";
 
 export function oauthAutoRegisterPlugin() {
   return {
@@ -18,7 +25,9 @@ export function oauthAutoRegisterPlugin() {
         const host = String(
           req.headers["x-forwarded-host"] ?? req.headers.host ?? "swarm-app.echo-op.com",
         );
-        const proto = String(req.headers["x-forwarded-proto"] ?? "https").split(",")[0].trim();
+        const proto = String(req.headers["x-forwarded-proto"] ?? "https")
+          .split(",")[0]
+          .trim();
         return `${proto}://${host}`;
       };
       const cors = (res) => {
@@ -33,9 +42,17 @@ export function oauthAutoRegisterPlugin() {
         res.end(JSON.stringify(obj));
       };
       const readBody = (req) =>
-        new Promise((resolve) => {
+        new Promise((resolve, reject) => {
           let d = "";
-          req.on("data", (c) => (d += c));
+          let size = 0;
+          req.on("data", (c) => {
+            size += c.length;
+            if (size > 32768) {
+              reject(Object.assign(new Error("request_too_large"), { code: "BODY_LIMIT" }));
+              return;
+            }
+            d += c;
+          });
           req.on("end", () => resolve(d));
           req.on("error", () => resolve(""));
         });
@@ -61,6 +78,8 @@ export function oauthAutoRegisterPlugin() {
           }
           const origin = originOf(req);
           const store = await server.ssrLoadModule("/src/lib/swarm/oauth-store.ts");
+
+          if (await handleConsentRoute(req, res, store, readBody)) return;
 
           if (
             method === "GET" &&
@@ -149,10 +168,66 @@ export function oauthAutoRegisterPlugin() {
             const b = Buffer.from(expected, "utf8");
             const consented =
               method === "POST" && a.length === b.length && nodeCrypto.timingSafeEqual(a, b);
+            if (!consented && method === "GET" && telegramConsentEnabled()) {
+              const scopes = (scope || store.OAUTH_SCOPES.join(" ")).split(/\s+/).filter(Boolean);
+              if (
+                q.get("response_type") !== "code" ||
+                q.get("code_challenge_method") !== "S256" ||
+                !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
+                scopes.some((s) => !store.OAUTH_SCOPES.includes(s)) ||
+                (q.get("resource") && q.get("resource") !== publicOrigin() + "/api/plugin/mcp")
+              ) {
+                sendJson(res, 400, { error: "invalid_request" });
+                return;
+              }
+              const gate = await commanderConsent({
+                action: "gate",
+                client_id,
+                redirect_uri,
+                code_challenge: challenge,
+                scope: scopes.join(" "),
+                state,
+                resource: publicOrigin() + "/api/plugin/mcp",
+                source: req.socket?.remoteAddress || "",
+                user_agent: String(req.headers["user-agent"] || "").slice(0, 200),
+              });
+              if (!gate.ok) {
+                sendJson(res, Number(gate.status) || 503, {
+                  error: gate.error || "commander_consent_unavailable",
+                });
+                return;
+              }
+              if (!gate.consented) {
+                consentRedirect(
+                  res,
+                  "/oauth/approve?request=" + encodeURIComponent(gate.request_id),
+                );
+                return;
+              }
+              const code = store.issueCode(client_id, redirect_uri, challenge, scopes.join(" "));
+              const callback = new URL(redirect_uri);
+              callback.searchParams.set("code", code);
+              if (state) callback.searchParams.set("state", state);
+              consentRedirect(res, callback.toString());
+              return;
+            }
             if (!consented) {
               const esc = (v) =>
-                String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-              const hidden = ["response_type", "client_id", "redirect_uri", "code_challenge", "code_challenge_method", "state", "scope", "resource"]
+                String(v ?? "").replace(
+                  /[&<>"']/g,
+                  (c) =>
+                    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+                );
+              const hidden = [
+                "response_type",
+                "client_id",
+                "redirect_uri",
+                "code_challenge",
+                "code_challenge_method",
+                "state",
+                "scope",
+                "resource",
+              ]
                 .map((k) => `<input type="hidden" name="${k}" value="${esc(q.get(k))}">`)
                 .join("");
               const bad = method === "POST";
@@ -160,7 +235,10 @@ export function oauthAutoRegisterPlugin() {
               res.setHeader("content-type", "text/html; charset=utf-8");
               res.setHeader("cache-control", "no-store");
               res.setHeader("x-frame-options", "DENY");
-              res.setHeader("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'");
+              res.setHeader(
+                "content-security-policy",
+                "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+              );
               res.end(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Authorize Echo Swarm</title>
 <style>body{font-family:system-ui,sans-serif;max-width:440px;margin:10vh auto;padding:0 16px;color:#111}input[type=password]{width:100%;padding:10px;font-size:15px;box-sizing:border-box}button{margin-top:12px;padding:10px 18px;font-size:15px}.e{color:#b00020}code{word-break:break-all}</style></head>
 <body><h2>Authorize Echo Swarm</h2><p>Client <code>${esc(client_id)}</code> requests <code>${esc(scope || "swarm.read swarm.write")}</code>.</p>
@@ -203,7 +281,10 @@ export function oauthAutoRegisterPlugin() {
               return;
             }
             if (gt === "refresh_token") {
-              const r = store.refreshToken(form.get("refresh_token") || "", form.get("client_id") || "");
+              const r = store.refreshToken(
+                form.get("refresh_token") || "",
+                form.get("client_id") || "",
+              );
               if (r.error) {
                 sendJson(res, 400, { error: r.error });
                 return;
@@ -223,7 +304,7 @@ export function oauthAutoRegisterPlugin() {
         } catch (err) {
           console.error("[swarm:oauth] handler failed:", err);
           if (!res.headersSent) {
-            res.statusCode = 500;
+            res.statusCode = err?.code === "BODY_LIMIT" ? 413 : 500;
             res.setHeader("content-type", "application/json");
             res.end(JSON.stringify({ error: "server_error" }));
           }
