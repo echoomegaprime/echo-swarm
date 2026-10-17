@@ -123,6 +123,12 @@ const tools = [
   ...MAXIMALIST_MCP_TOOLS,
 ];
 
+const OAUTH_CHALLENGE_HEADERS = {
+  ...cors,
+  "WWW-Authenticate":
+    'Bearer resource_metadata="https://swarm-app.echo-op.com/.well-known/oauth-protected-resource"',
+};
+
 function unauthorized(auth: { status: number; error: string }, id: unknown) {
   return Response.json(
     {
@@ -130,7 +136,7 @@ function unauthorized(auth: { status: number; error: string }, id: unknown) {
       id: id ?? null,
       error: { code: -32001, message: auth.error },
     },
-    { status: auth.status, headers: cors },
+    { status: auth.status, headers: auth.status === 401 ? OAUTH_CHALLENGE_HEADERS : cors },
   );
 }
 
@@ -143,7 +149,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
         if (!auth.ok) {
           return Response.json(
             { ok: false, error: auth.error },
-            { status: auth.status, headers: cors },
+            { status: auth.status, headers: auth.status === 401 ? OAUTH_CHALLENGE_HEADERS : cors },
           );
         }
         return Response.json(
@@ -180,7 +186,7 @@ export const Route = createFileRoute("/api/plugin/mcp")({
         // JSON-RPC notifications (no id) — acknowledge without auth hard-fail body for init handshake
         if (method.startsWith("notifications/")) {
           if (!auth.ok) {
-            return new Response(null, { status: auth.status, headers: cors });
+            return new Response(null, { status: auth.status, headers: auth.status === 401 ? OAUTH_CHALLENGE_HEADERS : cors });
           }
           return new Response(null, { status: 204, headers: cors });
         }
