@@ -568,14 +568,25 @@ def _find_lane_list(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+# Gate call_kinds whose catalog rows answer a plain chat prompt through echo.llm.call, so the roster
+# canary can seat them. vertex_generate = Google Vertex AI generateContent (google::gemini-4-argon,
+# OAuth on the funded project), admitted 2026-11-04 (#49854); it was filtered out before.
+SEATABLE_CALL_KINDS = frozenset({"openai_compat", "anthropic_cli", "dedicated_endpoint", "vertex_generate"})
+
+
+def is_seatable_lane(lane: dict[str, Any]) -> bool:
+    """An active catalog row with a chat-capable call_kind whose model id is neither a non-chat model
+    (audio/image/embed/...) nor a router alias (openrouter/free, auto)."""
+    model_id = str(lane.get("model_id") or "")
+    return (bool(lane.get("is_active")) and lane.get("call_kind") in SEATABLE_CALL_KINDS
+            and not _NON_CHAT.search(model_id) and not _ROUTER_ALIAS.search(model_id))
+
+
 async def build_roster(*, out: Path, concurrency: int, per_family: int, include_degraded: int,
                        max_input_usd_per_million: float) -> dict[str, Any]:
     gate = _Gate(timeout=90.0)
     listing = await gate.invoke("echo.llm.list", {}, reason="MAXIMALIST fleet roster discovery", timeout=60)
-    lanes = [lane for lane in _find_lane_list(listing)
-             if lane.get("is_active") and lane.get("call_kind") in {"openai_compat", "anthropic_cli", "dedicated_endpoint"}
-             and not _NON_CHAT.search(str(lane.get("model_id") or ""))
-             and not _ROUTER_ALIAS.search(str(lane.get("model_id") or ""))]
+    lanes = [lane for lane in _find_lane_list(listing) if is_seatable_lane(lane)]
     candidates = [lane for lane in lanes if lane.get("health_status") == "ok"]
     degraded: dict[str, int] = {}
     for lane in lanes:
