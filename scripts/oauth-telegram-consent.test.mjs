@@ -109,6 +109,35 @@ async function decide(f, p, action = "approve") {
   assert.equal((await response.json()).ok, true);
 }
 
+test("Meta AI Hatch registers only its exact HTTPS OAuth callback", async (t) => {
+  const f = await fixture(t, false);
+  const callback = "https://agent.meta.ai/api/hatch/oauth/callback";
+  const register = (redirectUri) =>
+    f.request("/oauth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ redirect_uris: [redirectUri] }),
+    });
+
+  const allowed = await register(callback);
+  assert.equal(allowed.status, 201);
+  const client = await allowed.json();
+  assert.deepEqual(client.redirect_uris, [callback]);
+
+  for (const invalid of [
+    "http://agent.meta.ai/api/hatch/oauth/callback",
+    "https://other.meta.ai/api/hatch/oauth/callback",
+    "https://agent.meta.ai.evil.example/api/hatch/oauth/callback",
+    "https://agent.meta.ai/api/hatch/oauth/callback/",
+    "https://agent.meta.ai/api/hatch/oauth/callback?next=evil",
+    "https://agent.meta.ai:444/api/hatch/oauth/callback",
+  ]) {
+    const denied = await register(invalid);
+    assert.equal(denied.status, 400, invalid);
+    assert.equal((await denied.json()).error, "invalid_redirect_uri");
+  }
+});
+
 const integration = {
   skip: !modulePath && "Set SWARM_TEST_CONSENT_MODULE to the reviewed Commander module",
 };
