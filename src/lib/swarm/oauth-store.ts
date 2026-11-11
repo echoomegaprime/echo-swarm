@@ -53,6 +53,7 @@ export function redirectAllowed(u: string): boolean {
     const host = (p.hostname || "").toLowerCase();
     if (p.protocol === "http:" && ["127.0.0.1", "localhost", "::1"].includes(host)) return true;
     if (p.protocol !== "https:") return false;
+    if (u === "https://agent.meta.ai/api/hatch/oauth/callback") return true;
     if (["chatgpt.com", "chat.openai.com"].includes(host)) return true;
     if (["claude.ai", "claude.com"].includes(host) && p.pathname === "/api/mcp/auth_callback")
       return true;
