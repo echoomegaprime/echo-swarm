@@ -62,6 +62,7 @@ function validReceiptShape(value: unknown): value is CertForgeVerification {
       typeof payload.run_id === "string" &&
       typeof payload.release_verdict === "string" &&
       typeof payload.run_outcome === "string" &&
+      typeof payload.target_identity_digest === "string" &&
       typeof payload.evidence_merkle_root === "string" &&
       typeof payload.issued_at === "string" &&
       typeof payload.expires_at === "string" &&
@@ -90,11 +91,16 @@ async function fetchOfficialReceipt(url: string): Promise<CertForgeVerification>
   }
 }
 
-function verifyOfficialReceipt(receipt: CertForgeVerification): boolean {
+function verifyOfficialReceipt(
+  receipt: CertForgeVerification,
+  expectedTargetIdentityDigest: string,
+): boolean {
   try {
     if (!receipt.valid) return false;
     if (receipt.payload.release_verdict !== "PRODUCTION_READY") return false;
     if (receipt.payload.run_outcome !== "COMPLETE") return false;
+    if (!HEX_64_RE.test(expectedTargetIdentityDigest)) return false;
+    if (receipt.payload.target_identity_digest !== expectedTargetIdentityDigest) return false;
     if (receipt.key_id !== receipt.payload.signing_key_id) return false;
     if (Date.parse(receipt.payload.expires_at) <= Date.now()) return false;
     if (!HEX_64_RE.test(receipt.payload.evidence_merkle_root)) return false;
@@ -131,7 +137,10 @@ async function builderSignature(
   };
 }
 
-function certifierSignature(receipt: CertForgeVerification): DigitalSignatureBlock {
+function certifierSignature(
+  receipt: CertForgeVerification,
+  expectedTargetIdentityDigest: string,
+): DigitalSignatureBlock {
   return {
     role: "ai_certifier",
     name: "ECHO Certification Forge",
@@ -141,7 +150,7 @@ function certifierSignature(receipt: CertForgeVerification): DigitalSignatureBlo
     publicKey: receipt.public_key_pem,
     signatureB64: receipt.signature_b64,
     signedAt: receipt.payload.issued_at,
-    verified: verifyOfficialReceipt(receipt),
+    verified: verifyOfficialReceipt(receipt, expectedTargetIdentityDigest),
   };
 }
 
@@ -218,9 +227,13 @@ function baseSnapshot(message: string): ReleaseCertificateSnapshot {
 
 async function calculateCertificate(): Promise<ReleaseCertificateSnapshot> {
   const verificationUrl = env("ECHO_CERTFORGE_VERIFICATION_URL");
+  const expectedTargetIdentityDigest = env("ECHO_CERTFORGE_TARGET_IDENTITY_DIGEST")?.toLowerCase();
   const sha = releaseSha();
   if (!verificationUrl) return baseSnapshot("Official Certification Forge verification URL is not configured.");
   if (sha === "UNCONFIGURED") return baseSnapshot("The exact deployed release SHA is not configured.");
+  if (!expectedTargetIdentityDigest || !HEX_64_RE.test(expectedTargetIdentityDigest)) {
+    return baseSnapshot("The exact Certification Forge target identity digest is not configured.");
+  }
 
   let receipt: CertForgeVerification;
   try {
@@ -233,10 +246,12 @@ async function calculateCertificate(): Promise<ReleaseCertificateSnapshot> {
     };
   }
 
-  const certifier = certifierSignature(receipt);
+  const certifier = certifierSignature(receipt, expectedTargetIdentityDigest);
   if (!certifier.verified) {
     return {
-      ...baseSnapshot("Certification Forge signature or release verdict is invalid."),
+      ...baseSnapshot(
+        "Certification Forge signature, release verdict, or exact target identity binding is invalid.",
+      ),
       status: "invalid",
       verificationUrl,
       officialReceipt: receipt,
