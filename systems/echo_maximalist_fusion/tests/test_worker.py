@@ -23,7 +23,8 @@ from echo_fusion_worker.config import (SeatsConfigError, VALID_PROVIDERS,  # noq
                                        load_seats_dict, seats_fingerprint)
 from echo_fusion_worker.factory import (build_engine, register_profile,  # noqa: E402
                                         clamp_budget, StubModelAdapter,
-                                        MAX_CALLS_CEILING, MAX_COST_CEILING)
+                                        MAX_CALLS_CEILING, MAX_COST_CEILING,
+                                        MAX_WALL_CEILING)
 from echo_fusion_worker.app import create_app  # noqa: E402
 
 
@@ -147,9 +148,11 @@ async def w10_build_engine_unknown_profile_fails_closed():
 
 
 async def w11_budget_clamped_to_ceiling():
-    b = clamp_budget(Budget(max_calls=99999, max_cost_usd=999.0))
+    b = clamp_budget(Budget(max_calls=99999, max_cost_usd=999.0, max_wall_s=99999))
     assert b.max_calls <= MAX_CALLS_CEILING, "max_calls not clamped"
     assert b.max_cost_usd <= MAX_COST_CEILING, "max_cost not clamped"
+    assert MAX_WALL_CEILING == 4800.0, "full-40 hard ceiling must fit the measured bounded recursive graph"
+    assert b.max_wall_s == MAX_WALL_CEILING, "max_wall_s not clamped to the full-40 ceiling"
 
 
 async def w12_budget_clamp_leaves_small_budget():
@@ -269,9 +272,20 @@ async def w22_resume_reruns_in_process():
     async with _client(app) as c:
         run = await c.post("/run", json={"objective": "resume me", "wait": True})
         rid = run.json()["run_id"]
+        original_answer = run.json()["result"]["answer"]
         rr = await c.post("/resume", json={"run_id": rid})
-        assert rr.status_code in (200, 202), f"resume returned {rr.status_code}"
+        assert rr.status_code == 202, f"resume returned {rr.status_code}"
         assert rr.json()["run_id"] == rid
+        assert rr.json()["phase"] == "resuming"
+        for _ in range(100):
+            result = await c.get(f"/runs/{rid}")
+            if result.json()["done"]:
+                break
+            await asyncio.sleep(0.01)
+        body = result.json()
+        assert body["done"] is True, "resumed run did not complete"
+        assert body["error"] is None, f"resumed run failed: {body['error']}"
+        assert body["result"]["answer"] == original_answer
 
 
 TESTS = [

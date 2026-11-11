@@ -5,29 +5,27 @@
   "source_remote": null,
   "retrieved_by": "QUENCH",
   "retrieved_at": "2026-08-29T14:27:03.5078803Z",
-  "excluded": [
-    ".git/",
-    ".venv/",
-    "runtime/",
-    "logs/",
-    "/etc/echo/echo-fusion-worker.env"
-  ],
+  "excluded": [".git/", ".venv/", "runtime/", "logs/", "/etc/echo/echo-fusion-worker.env"],
   "service": {
     "unit": "echo-fusion-worker.service",
     "working_directory": "/home/forge/echo-maximalist-swarm",
     "module": "echo_fusion_worker.app:app",
-    "bind": "127.0.0.1:8157"
+    "bind": "127.0.0.1:8358"
   },
   "repository_transformations": {
-    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
+    "reason": "Independent PR review found replication, representative selection, idempotent retry, key parsing, and unverified-evidence trust defects. The later reconstructed_v05 integration adds an explicit adapter without replacing the recovered engine. Source SHA remains recorded under sha256; quench_sha256 binds each corrected repository byte stream.",
     "files": {
       "src/echo_fusion/arbitration.py": {
         "quench_sha256": "4a478cf1f62bbc8b66ed873f038bbc67f364df90611a7bd3b68238c852b0518f",
         "changes": "replication keys now include the complete subproblem and claim instead of an 80-character claim prefix, and cluster representatives deterministically prefer stronger independent corroboration"
       },
       "src/echo_fusion_worker/app.py": {
-        "quench_sha256": "366a3d3e78ed656863d652da4719a7fc15a39bfcf547a7ac45b2ed74d9515e7b",
-        "changes": "idempotent wait:true retries now wait for an existing run and return its completed result or error inline"
+        "quench_sha256": "aeb03a95735267bbc4c241f8842fbb25ce92038c2c2e396b53c534e24a3f2060",
+        "changes": "worker 0.2.5 retains bounded reconstructed_v05 routing and completed restart readback while adding a serialized start boundary that commits a request-bound idempotency mapping before background provider work, restores completed mappings across process restart, and fails closed on conflicts, missing state, and incomplete restarted runs"
+      },
+      "src/echo_fusion_worker/factory.py": {
+        "quench_sha256": "171589b183f956f35e4ec4857cb9ad9416f473bbeda7c4328b9d8758ca1733f5",
+        "changes": "sets the finite server-owned wall to 4800 seconds from the measured 70-call recursive graph after live evidence reached Trinity near 2000 seconds; call and configured-cost ceilings remain unchanged"
       },
       "src/echo_fusion/schemas.py": {
         "quench_sha256": "c28cff3d585a804cb753146195c4c950c916039536e41ffa8d119b7bdaf83549",
@@ -40,6 +38,52 @@
       "tests/test_invariants.py": {
         "quench_sha256": "c20c1c641819f8f9bf5627d7ff5d6ed8a8c755f9491655b1abeee2955c2be362",
         "changes": "the strong-tier cascade control now uses a trusted extractor that explicitly verifies evidence before suppressing elite review"
+      },
+      "smoke_live.py": {
+        "quench_sha256": "24e594c1a9bd68d5947f29d41af206243631be5c034d8e37f4fd781aacfeb532",
+        "changes": "the loopback-only live release smoke verifies worker 0.2.5, reconstructed identity, non-parity, provider and capability readiness, durable idempotency, bounded full-40 asynchronous completion inside the measured 4800-second wall, result provenance, resume completion, and the unknown-run negative control"
+      },
+      "tests/test_worker.py": {
+        "quench_sha256": "d0cb9162ab9859255350e55a04f6e732cc515fe2b393a99e6311f471b523e95d",
+        "changes": "verifies the resume transition contract, polls through completion to compare the persisted answer, and locks the recursive full-40 server wall ceiling to 4800 seconds"
+      },
+      "README.md": {
+        "quench_sha256": "4e4447a213612edd20b76102ee314d5a56003ddbfa2f861352e4b13011e0dd9d",
+        "changes": "documents the exact reconstructed profile boundary, live versus deterministic provider separation, measured recursive full-40 envelope, durable request-bound idempotency and completed-run seeding, verification commands, fail-closed live smoke, certification gates, and additive maximalist-namespace rollback procedure"
+      }
+    },
+    "repository_additions": {
+      "src/echo_fusion_worker/idempotency.py": {
+        "quench_sha256": "0edb2c2a600ddfa6b3e2069f0aba51909bb40b831725f78c7434d84a2b5431b2",
+        "changes": "implements schema- and provenance-bound atomic JSON persistence, hashed client keys, canonical request binding, conflict detection, strict corruption handling, and an idempotent operator command that seeds only an existing completed reconstructed checkpoint"
+      },
+      "src/echo_fusion_worker/portable_core.py": {
+        "quench_sha256": "e689762ff9fbe695f379cf359ee795b849453e311cbd5e4523804538abdf3e24",
+        "changes": "adapts the exact MAXIMALIST_RECONSTRUCTED 0.5.3 package, governed Echo SDK capability profile and measured live input contracts, explicit routing policies, restart-safe performance history, explicit fallback graph, phase-specific ANVIL Trinity output contract, a 900-second transport and controller timeout for measured high-context Trinity calls, explicit bounded ANVIL context, a 500000-input-token ceiling, and the finite 4800-second recursive full-40 deadline without modifying the recovered echo_fusion engine"
+      },
+      "tests/test_portable_core.py": {
+        "quench_sha256": "e64e7e3f9ba622c197b1b43dafec10846e3c8f5db8e556cd9fd69b2cc5db8a6b",
+        "changes": "verifies artifact hash, direct wheel resource loading, 40-seat and separate-Trinity invariants, capability health, worker round-trip, non-parity provenance, routing receipts, adaptive bounded selection, claim topology, coverage, performance persistence, restart no-replay, and preservation of the governed 4800-second and 500000-input-token recursive budget"
+      },
+      "tests/test_service_unit.py": {
+        "quench_sha256": "ed8e8598d71e33235ba4b9a84ee9c37e131a41a061226a24239d11db98c53530",
+        "changes": "verifies v05 profile selection, isolated run-state, memory, performance, idempotency, routing, explicit 500000-input-token and 900-second per-call configuration, and rejects regression of the live smoke to the stub profile"
+      },
+      "tests/test_live_smoke.py": {
+        "quench_sha256": "516a8076aa848931c6af7c4632458a345e3eb62e00c973516f5dbaf8187349c0",
+        "changes": "deterministically verifies the fail-closed live identity and durable-idempotency contract, loopback boundary, 4800-second recursive full-40 request budget, asynchronous-only complete run and resume path, absence of synchronous self-test use, and negative control without activating fake providers in a live profile"
+      },
+      "tests/test_review_regressions.py": {
+        "quench_sha256": "6f8784e101568fbacd3b3c44367394161aa89cd786f0caa22987115b9f1b312d",
+        "changes": "proves persistence before dispatch, restart-safe lookup, twenty-way concurrent same-key collapse, request conflict rejection, corrupt and dangling state failure, incomplete-run explicit-resume handling, no dispatch after commit failure, hashed-key storage, and completed-run seeding idempotency"
+      },
+      "deploy/echo-fusion-worker.service": {
+        "quench_sha256": "6f5d917b46c22238dc8de7172436138b0c998f6ab58d9927b88d03056d29e9c8",
+        "changes": "selects the v05 adapter, isolated restart-safe state, memory, performance and idempotency, explicit full-40 routing, four-request provider queue, 900-second per-call timeout, and 500000-input-token ceiling defaults"
+      },
+      "../maximalist_reconstructed_core/vendor/maximalist_reconstructed-0.5.3-py3-none-any.whl": {
+        "source_revision": "de84ad35d6cc9a9140c6c0448ad1ba700c0a2b4f",
+        "sha256": "defee35cc2a32a6f0ac3ae06492add1196ee6f56bccddd73dd1c40ee9f1b20a5"
       }
     }
   },
@@ -47,20 +91,20 @@
     ".gitignore": "97F9921077C71ED9C92AE9EC12F28E7D2163AE265F1F587B6B03BB584077CDD8",
     "CLAUDE.md": "D8E283BB63350B41ADD858E2FF1D6A975195174426167D07A5AFE89D8CDD4A91",
     "config/seats.yaml": "F99FB07D52744B68D89726895B7C740EADE382434C441E209CF8146428D56A95",
-    "deploy/echo-fusion-worker.service": "71AB58EE52625977CCA4A59A9C38BC8A245BDA85D2328FAE2711294AFEA681DC",
+    "deploy/echo-fusion-worker.service": "F6357E0F08E73AF6EB404DEACCC11B4EE000A64B42043295825F0489C099575A",
     "docs/CONSOLIDATED_BUILD_SPEC.md": "D5C5879F86FCC366F6C449069D1FEC56ACFB6CC1B79AB2A3E7EDD342AA52599A",
     "docs/reviews/tri-review-fable-5.md": "6669AA51551876BECD2FF1404FDB192FF8EB235447912EF44D1F16B4BEA50F3B",
     "docs/reviews/tri-review-grok-4.6.md": "ECB5C5D7A877A5EC819994B3043A925926E2868DAA6AE30484414657B4DBAF3C",
     "docs/reviews/tri-review-opus-5.md": "75FDCE44E026A148DD9A2AE45836EA9BB1FCAD0146DA5350205A37606874D133",
-    "README.md": "5186C129A5A75C407220165E2DC3359ED69A42B5501E3C8A0F6943BE1E4FCB5F",
-    "smoke_live.py": "28B541FC790EC1C467B01CC3283716F10A7E7EE19EFBD014D53BC82DA6320797",
+    "README.md": "37FD2A8ACCD47E48AACAAEC1AACFE55DEEE02D8F4F24C14BB374923BE383A967",
+    "smoke_live.py": "B106B0950C895D5B6F6E1186D6C5F42BB452486831DFDF553F29BA85546C4042",
     "src/echo_fusion/__init__.py": "A82944DEFBD1022C77E2DF8283FE60E484F7B4E1259E994A860993E4115E3BC4",
     "src/echo_fusion/adapters.py": "728BBFDBBA43BE5705619072639C472B6047FBA02138C4C0382B9497E9386E5F",
     "src/echo_fusion/arbitration.py": "01BECA262C71563EBF16B6D73802EE9B269CCAFEDEBC7FDB4A5952ACF15F189C",
     "src/echo_fusion/engine.py": "37E01AE4BD905E73E1DBBE593287B5ACE391994C067AA338081EB10A2F4EA053",
     "src/echo_fusion/schemas.py": "B8B156E345E5D022D4737B378236E3DB0A3060A534344E5A100CB0D7DCEA54FD",
     "src/echo_fusion_worker/__init__.py": "F0E1C2694468A26684556753E052112E73675C9A39D92F49CC075D9583AF4CDA",
-    "src/echo_fusion_worker/app.py": "7D0965ECEDC9A2046DCFCE57EFA82C7AF2AE604C3E46AEA80D64B5DD4C99146F",
+    "src/echo_fusion_worker/app.py": "01E7BF1AF29242E5F8FEB2465199363341EB1EEC587FAC2C22BF25841A61D2A1",
     "src/echo_fusion_worker/config.py": "9583F5AC281D052A0F9D28DF8B79043279D990B6AC86744A856A9A6E7860AE7E",
     "src/echo_fusion_worker/factory.py": "592B56D8CB465C5123216DA350F302C3B6501A27196AA10E1822D0692FC8B452",
     "src/echo_fusion_worker/live_adapters.py": "BF7D279B9F164059306BAE6F072650C9E97AFEE8968BD826486301753960CC65",
