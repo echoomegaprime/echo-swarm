@@ -213,8 +213,11 @@ def _unwrap(payload: Any) -> dict[str, Any]:
 def served_mismatch(body: dict[str, Any], provider: str, model: str) -> str | None:
     """The gate's router can silently fall back (e.g. a paid OpenRouter lane on 402 is served
     by ``openrouter/free``). A seat is only independent evidence if the requested lane answered."""
-    served_provider = str(body.get("provider") or provider)
-    served_model = str(body.get("model") or model)
+    served_provider = body.get("provider")
+    served_model = body.get("model")
+    if (not isinstance(served_provider, str) or not served_provider.strip()
+            or not isinstance(served_model, str) or not served_model.strip()):
+        return "missing explicit served provider/model identity"
     if served_provider != provider or served_model != model:
         return f"served by {served_provider}/{served_model} instead of {provider}/{model}"
     return None
