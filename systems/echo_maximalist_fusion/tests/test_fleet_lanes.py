@@ -122,7 +122,7 @@ def _request(model: str, phase: str = "independent_pass") -> ProviderRequest:
 
 def test_adapter_routes_the_exact_lane_and_reports_usage(tmp_path: Path) -> None:
     roster = fleet_lanes.FleetRoster.load(_roster(tmp_path))
-    gate = _FakeGate({"ok": True, "text": "answer", "usage": {"prompt_tokens": 12, "completion_tokens": 7}})
+    gate = _FakeGate({"ok": True, "text": "answer", "provider": "together", "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "usage": {"prompt_tokens": 12, "completion_tokens": 7}})
     adapter = fleet_lanes.FleetGateAdapter(roster, gate=gate)
     completion = asyncio.run(adapter.complete(_request("together::meta-llama/Llama-3.3-70B-Instruct-Turbo")))
     capability, params, _ = gate.calls[0]
@@ -138,7 +138,7 @@ def test_adapter_failures_raise_provider_errors(tmp_path: Path) -> None:
         asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=_FakeGate({"ok": False, "error": "HTTP 429"}))
                     .complete(_request(roster.lanes[0]["ref"])))
     with pytest.raises(ProviderError, match="no text"):
-        asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=_FakeGate({"ok": True, "text": " "}))
+        asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=_FakeGate({"ok": True, "text": " ", "provider": "openrouter", "model": "anthropic/claude-opus-4-8"}))
                     .complete(_request(roster.lanes[0]["ref"])))
     with pytest.raises(ProviderError, match="must be"):
         asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=_FakeGate({"ok": True, "text": "x"}))
@@ -147,7 +147,7 @@ def test_adapter_failures_raise_provider_errors(tmp_path: Path) -> None:
 
 def test_trinity_phase_asks_for_the_candidate_schema(tmp_path: Path) -> None:
     roster = fleet_lanes.FleetRoster.load(_roster(tmp_path))
-    gate = _FakeGate({"ok": True, "text": "{}"})
+    gate = _FakeGate({"ok": True, "text": "{}", "provider": "openrouter", "model": "anthropic/claude-opus-4-8"})
     asyncio.run(fleet_lanes.FleetGateAdapter(roster, gate=gate).complete(_request(roster.trinity[0], "trinity")))
     assert "supported_claims" in gate.calls[0][1]["prompt"] and gate.calls[0][1]["temperature"] == 0
 
