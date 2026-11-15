@@ -351,3 +351,21 @@ def test_excluded_providers_parse() -> None:
     from echo_fusion_worker.fleet_lanes import excluded_providers
     assert excluded_providers("groq, Perplexity ,") == {"groq", "perplexity"}
     assert excluded_providers("") == set()
+
+
+def test_vertex_generate_lanes_are_seat_candidates() -> None:
+    """google::gemini-4-argon is call_kind vertex_generate on the gate (#49854): it must reach the canary
+    like the OpenAI-compatible rows, while non-chat models, router aliases and inactive rows stay out."""
+    from echo_fusion_worker.fleet_lanes import SEATABLE_CALL_KINDS, is_seatable_lane
+    assert "vertex_generate" in SEATABLE_CALL_KINDS
+    argon = {"provider": "google", "model_id": "gemini-4-argon", "call_kind": "vertex_generate",
+             "is_active": True, "health_status": "ok"}
+    assert is_seatable_lane(argon)
+    for kind in ("openai_compat", "anthropic_cli", "dedicated_endpoint"):
+        assert is_seatable_lane(dict(argon, call_kind=kind))
+    assert not is_seatable_lane(dict(argon, is_active=False))
+    assert not is_seatable_lane(dict(argon, call_kind="together_image_generation"))
+    assert not is_seatable_lane(dict(argon, call_kind="grok_cli"))
+    assert not is_seatable_lane(dict(argon, model_id="gemini-3-pro-image"))
+    assert not is_seatable_lane({"provider": "openrouter", "model_id": "openrouter/free",
+                                 "call_kind": "openai_compat", "is_active": True})
