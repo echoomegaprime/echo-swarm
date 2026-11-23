@@ -139,11 +139,13 @@ export function exchangeCode(
 
 export function refreshToken(
   refresh: string,
-  _client_id: string,
+  client_id: string,
 ): { error?: string; access?: string; scope?: string } {
   const t = loadTokens();
   const rec = t[refresh];
   if (!rec || !rec.refresh || rec.exp < Date.now()) return { error: "invalid_grant" };
+  // PKCE refresh grants remain bound to the original registered client.
+  if (!client_id || rec.client_id !== client_id) return { error: "invalid_grant" };
   const access = newToken(rec.client_id, rec.scope, 3_600_000, false);
   return { access, scope: rec.scope };
 }
